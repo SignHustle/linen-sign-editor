@@ -161,12 +161,12 @@ function IllustrationThumb({ type, size = 60, color = "#9A8F85" }) {
 // ─── Templates ────────────────────────────────────────────────────────────────
 const TEMPLATES = [
   { id:"swan-lake", name:"Swan Lake", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F0EDE8", elements:[
-    {id:"sl5",type:"text",content:"J",x:128.6647379732187,y:415.00314101504387,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:219,lineHeight:1.1,rotation:0},
-    {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:106.09420289855072,y:613.391304347826,fontSize:18,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:611,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"el-1777083405654",type:"text",content:"AMES",x:209.67923072684192,y:433.30748884113075,fontSize:49,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:1679,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"el-1777083452047",type:"text",content:"M",x:54.78260869565218,y:274.54323028599765,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:219,lineHeight:1.1,rotation:0},
-    {id:"el-1777083452048",type:"text",content:"ONIQUE",x:177.89011957899382,y:288.23888245991077,fontSize:49,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:1679,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"el-1777083472651",type:"text",content:"&",x:72.78260869565219,y:377.49975202512815,fontSize:45,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:183,lineHeight:1.1,rotation:0},
+    {id:"el-1777083452047",type:"text",content:"M",x:20,y:120,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:130,lineHeight:1.1,rotation:0},
+    {id:"el-1777083452048",type:"text",content:"ONIQUE",x:75,y:133,fontSize:36,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:250,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"el-1777083472651",type:"text",content:"&",x:30,y:200,fontSize:38,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:120,lineHeight:1.1,rotation:0},
+    {id:"sl5",type:"text",content:"J",x:20,y:240,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:130,lineHeight:1.1,rotation:0},
+    {id:"el-1777083405654",type:"text",content:"AMES",x:75,y:253,fontSize:36,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:250,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:30,y:340,fontSize:10,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
   ]},
   { id:"fleur", name:"Fleur", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#FAF8F5", elements:[
     {id:"fl1",type:"text",content:"WELCOME TO THE WEDDING OF",x:30,y:55,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
