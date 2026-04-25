@@ -160,13 +160,13 @@ function IllustrationThumb({ type, size = 60, color = "#9A8F85" }) {
 
 // ─── Templates ────────────────────────────────────────────────────────────────
 const TEMPLATES = [
-  { id:"swan-lake", name:"Swan Lake", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F0EDE8", elements:[
-    {id:"el-1777083452047",type:"text",content:"M",x:20,y:120,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:130,lineHeight:1.1,rotation:0},
-    {id:"el-1777083452048",type:"text",content:"ONIQUE",x:75,y:133,fontSize:36,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:250,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"el-1777083472651",type:"text",content:"&",x:30,y:200,fontSize:38,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:120,lineHeight:1.1,rotation:0},
-    {id:"sl5",type:"text",content:"J",x:20,y:240,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:130,lineHeight:1.1,rotation:0},
-    {id:"el-1777083405654",type:"text",content:"AMES",x:75,y:253,fontSize:36,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:250,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:30,y:340,fontSize:10,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
+  { id:"swan-lake", name:"Swan Lake", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#fffbf9", elements:[
+    {id:"el-1777083452047",type:"text",content:"M",x:38,y:324.2623574144487,fontSize:67,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:162,lineHeight:1.1,rotation:0},
+    {id:"el-1777083452048",type:"text",content:"ONIQUE",x:187.97393508568908,y:346.2623574144487,fontSize:45,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:311,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"el-1777083472651",type:"text",content:"&",x:61.959442332065905,y:417.0159806028545,fontSize:47,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:149,lineHeight:1.1,rotation:0},
+    {id:"sl5",type:"text",content:"J",x:117.06265498429492,y:452.42662699068717,fontSize:67,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:162,lineHeight:1.1,rotation:0},
+    {id:"el-1777083405654",type:"text",content:"AMES",x:215.4974375929906,y:483.6730038022813,fontSize:45,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:311,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:108.85507246376811,y:641.7406182840139,fontSize:12,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:423,letterSpacing:3,lineHeight:1.5,rotation:0},
   ]},
   { id:"fleur", name:"Fleur", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#FAF8F5", elements:[
     {id:"fl1",type:"text",content:"WELCOME TO THE WEDDING OF",x:30,y:55,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
@@ -185,7 +185,7 @@ const TEMPLATES = [
     {id:"wh5",type:"text",content:"Amelia & James",x:30,y:265,fontSize:32,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:340,lineHeight:1.3,rotation:0},
     {id:"wh6",type:"text",content:"14th June 2025  -  The Grand Estate",x:30,y:312,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:1,lineHeight:1.5,rotation:0},
     {id:"wh7",type:"illustration",illustrationId:"bow",label:"Bow",x:140,y:350,width:120,height:100,color:"#C5B9AC",rotation:0},
-  ]},,
+  ]},
   { id:"welcome", name:"Welcome to Our Wedding", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F2EDE4", elements:[
     {id:"e1",type:"text",    content:"Welcome to Our",              x:30,y:80,  fontSize:26,fontId:"cormorant",  italic:true, align:"center",color:"#3A3028",width:340,lineHeight:1.35,rotation:0},
     {id:"e2",type:"text",    content:"Wedding",                     x:30,y:130, fontSize:52,fontId:"great-vibes",italic:false,align:"center",color:"#3A3028",width:340,lineHeight:1.2, rotation:0},
