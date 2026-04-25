@@ -1191,15 +1191,41 @@ export default function LinenSignEditor() {
                   onMouseEnter={e => { if (!tmpl.placeholder) { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,0.14)"; }}}
                   onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 2px 20px rgba(0,0,0,0.08)"; }}>
                   <LinenTexture uid={tmpl.id}/>
-                  <div style={{position:"absolute",inset:8,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,overflow:"hidden"}}>
-                    {tmpl.elements.slice(0, 4).map((el, i) => el.type === "text" && (
-                      <div key={el.id} style={{fontFamily:(getAllFonts().find(f=>f.id===el.fontId)||FONTS[0]).family,
-                        fontSize:Math.min(el.fontSize*0.25,13),color:el.color,textAlign:"center",
-                        fontStyle:el.italic?"italic":"normal",opacity:i===0?1:0.65,
-                        lineHeight:1.25,width:"100%",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
-                        {el.content}
-                      </div>
-                    ))}
+                  <div style={{position:"absolute",inset:0,overflow:"hidden"}}>
+                    {(() => {
+                      const textEls = tmpl.elements.filter(el => el.type === "text");
+                      if (!textEls.length) return null;
+                      const minY = Math.min(...textEls.map(el => el.y));
+                      const maxY = Math.max(...textEls.map(el => el.y + (el.fontSize || 20) * (el.lineHeight || 1.2)));
+                      const contentH = maxY - minY;
+                      const allW = textEls.map(el => (el.x || 0) + (el.width || 340));
+                      const contentW = Math.max(...allW);
+                      const scale = Math.min(110 / contentW, 110 / contentH, 0.35);
+                      return (
+                        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                          <div style={{position:"relative",transform:`scale(${scale})`,transformOrigin:"center center"}}>
+                            {textEls.map((el) => (
+                              <div key={el.id} style={{
+                                position:"absolute",
+                                left:el.x - (Math.min(...textEls.map(e=>e.x))),
+                                top:el.y - minY,
+                                fontFamily:(getAllFonts().find(f=>f.id===el.fontId)||FONTS[0]).family,
+                                fontSize:el.fontSize,
+                                color:el.color,
+                                textAlign:el.align||"center",
+                                fontStyle:el.italic?"italic":"normal",
+                                lineHeight:el.lineHeight||1.2,
+                                width:el.width,
+                                letterSpacing:el.letterSpacing||0,
+                                whiteSpace:"nowrap",
+                              }}>
+                                {el.content}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   {tmpl.placeholder && (
                     <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
