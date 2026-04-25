@@ -1203,11 +1203,11 @@ export default function LinenSignEditor() {
                       const scale = Math.min(110 / contentW, 110 / contentH, 0.35);
                       return (
                         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                          <div style={{position:"relative",transform:`scale(${scale})`,transformOrigin:"center center"}}>
+                          <div style={{position:"relative",width:contentW,height:contentH,transform:`scale(${scale})`,transformOrigin:"center center"}}>
                             {textEls.map((el) => (
                               <div key={el.id} style={{
                                 position:"absolute",
-                                left:el.x - (Math.min(...textEls.map(e=>e.x))),
+                                left:el.x,
                                 top:el.y - minY,
                                 fontFamily:(getAllFonts().find(f=>f.id===el.fontId)||FONTS[0]).family,
                                 fontSize:el.fontSize,
