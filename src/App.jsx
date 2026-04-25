@@ -185,25 +185,7 @@ const TEMPLATES = [
     {id:"wh5",type:"text",content:"Amelia & James",x:30,y:265,fontSize:32,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:340,lineHeight:1.3,rotation:0},
     {id:"wh6",type:"text",content:"14th June 2025  -  The Grand Estate",x:30,y:312,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:1,lineHeight:1.5,rotation:0},
     {id:"wh7",type:"illustration",illustrationId:"bow",label:"Bow",x:140,y:350,width:120,height:100,color:"#C5B9AC",rotation:0},
-  ]},
-  { id:"fleur", name:"Fleur", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#FAF8F5", elements:[
-    {id:"fl1",type:"text",content:"WELCOME TO THE WEDDING OF",x:30,y:55,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"fl2",type:"text",content:"Emma",x:20,y:90,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
-    {id:"fl3",type:"text",content:"&",x:30,y:195,fontSize:22,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,lineHeight:1.3,rotation:0},
-    {id:"fl4",type:"text",content:"Adrian",x:20,y:228,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
-    {id:"fl5",type:"divider",x:120,y:335,width:160},
-    {id:"fl6",type:"text",content:"12 JUNE 2025",x:30,y:355,fontSize:10,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"fl7",type:"text",content:"The Manor House, Somerset",x:30,y:378,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#C5B9AC",width:340,letterSpacing:2,lineHeight:1.5,rotation:0},
-  ]},
-  { id:"whimsy-wedding", name:"Whimsy", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F5F0EA", elements:[
-    {id:"wh1",type:"illustration",illustrationId:"dove",label:"Doves",x:110,y:30,width:180,height:80,color:"#9A8F85",rotation:0},
-    {id:"wh2",type:"text",content:"Welcome to Our",x:30,y:130,fontSize:18,fontId:"whimsy",italic:false,align:"center",color:"#5A4A3C",width:340,lineHeight:1.4,rotation:0},
-    {id:"wh3",type:"text",content:"Wedding",x:20,y:168,fontSize:52,fontId:"whimsy",italic:false,align:"center",color:"#3A3028",width:360,lineHeight:1.2,rotation:0},
-    {id:"wh4",type:"divider",x:100,y:240,width:200},
-    {id:"wh5",type:"text",content:"Amelia & James",x:30,y:265,fontSize:32,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:340,lineHeight:1.3,rotation:0},
-    {id:"wh6",type:"text",content:"14th June 2025  -  The Grand Estate",x:30,y:312,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:1,lineHeight:1.5,rotation:0},
-    {id:"wh7",type:"illustration",illustrationId:"bow",label:"Bow",x:140,y:350,width:120,height:100,color:"#C5B9AC",rotation:0},
-  ]},
+  ]},,
   { id:"welcome", name:"Welcome to Our Wedding", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F2EDE4", elements:[
     {id:"e1",type:"text",    content:"Welcome to Our",              x:30,y:80,  fontSize:26,fontId:"cormorant",  italic:true, align:"center",color:"#3A3028",width:340,lineHeight:1.35,rotation:0},
     {id:"e2",type:"text",    content:"Wedding",                     x:30,y:130, fontSize:52,fontId:"great-vibes",italic:false,align:"center",color:"#3A3028",width:340,lineHeight:1.2, rotation:0},
@@ -263,16 +245,17 @@ const TEMPLATES = [
 const DEFAULT_PALETTE = ["#3A3028","#6B5E52","#9A8F85","#F5F0E8","#4A6741","#8AAFC0","#C4714A","#C9A84C"];
 
 // ─── Linen texture ────────────────────────────────────────────────────────────
-function LinenTexture({ opacity=0.18 }) {
+function LinenTexture({ opacity=0.18, uid="linen" }) {
   if (opacity <= 0) return null;
+  const fid = "linen-" + uid;
   return (
     <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity,pointerEvents:"none"}} xmlns="http://www.w3.org/2000/svg">
-      <filter id="linen">
+      <filter id={fid}>
         <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch"/>
         <feColorMatrix type="saturate" values="0"/>
         <feBlend in="SourceGraphic" mode="multiply"/>
       </filter>
-      <rect width="100%" height="100%" filter="url(#linen)"/>
+      <rect width="100%" height="100%" filter={`url(#${fid})`}/>
     </svg>
   );
 }
@@ -1207,7 +1190,7 @@ export default function LinenSignEditor() {
                     opacity:tmpl.placeholder?0.45:1}}
                   onMouseEnter={e => { if (!tmpl.placeholder) { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,0.14)"; }}}
                   onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 2px 20px rgba(0,0,0,0.08)"; }}>
-                  <LinenTexture/>
+                  <LinenTexture uid={tmpl.id}/>
                   <div style={{position:"absolute",inset:8,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,overflow:"hidden"}}>
                     {tmpl.elements.slice(0, 4).map((el, i) => el.type === "text" && (
                       <div key={el.id} style={{fontFamily:(getAllFonts().find(f=>f.id===el.fontId)||FONTS[0]).family,
