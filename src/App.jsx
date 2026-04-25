@@ -14,7 +14,27 @@ const FONTS = [
 
 // Runtime custom font registry — updated when user uploads a font
 let _runtimeFonts = [];
-function getAllFonts() { return [...FONTS, ..._runtimeFonts]; }
+
+const BRAND_FONTS = [
+  { id:"mozart",  label:"Mozart Script",  family:"MozartScript",  file:"/MozartScript-Black.otf" },
+  { id:"dubiel",  label:"Dubiel",         family:"Dubiel",        file:"/DUBIEL.TTF" },
+  { id:"madison", label:"Madison Script", family:"Madison",       file:"/Madison-Regular.ttf" },
+  { id:"whimsy",  label:"Whimsy",         family:"Whimsy",        file:"/Whimsy.otf" },
+];
+let _brandFontsLoaded = false;
+function loadBrandFonts() {
+  if (_brandFontsLoaded) return;
+  _brandFontsLoaded = true;
+  BRAND_FONTS.forEach(f => {
+    const face = new FontFace(f.family, "url(" + f.file + ")");
+    face.load().then(loaded => document.fonts.add(loaded)).catch(()=>{});
+    const s = document.createElement("style");
+    s.textContent = "@font-face{font-family:'" + f.family + "';src:url('" + f.file + "');}";
+    document.head.appendChild(s);
+  });
+}
+
+function getAllFonts() { return [...FONTS, ...BRAND_FONTS, ..._runtimeFonts]; }
 
 // ─── Sizes ────────────────────────────────────────────────────────────────────
 const SIZES = {
@@ -140,6 +160,50 @@ function IllustrationThumb({ type, size = 60, color = "#9A8F85" }) {
 
 // ─── Templates ────────────────────────────────────────────────────────────────
 const TEMPLATES = [
+  { id:"swan-lake", name:"Swan Lake", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F0EDE8", elements:[
+    {id:"sl5",type:"text",content:"J",x:128.6647379732187,y:415.00314101504387,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:219,lineHeight:1.1,rotation:0},
+    {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:106.09420289855072,y:613.391304347826,fontSize:18,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:611,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"el-1777083405654",type:"text",content:"AMES",x:209.67923072684192,y:433.30748884113075,fontSize:49,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:1679,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"el-1777083452047",type:"text",content:"M",x:54.78260869565218,y:274.54323028599765,fontSize:54,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:219,lineHeight:1.1,rotation:0},
+    {id:"el-1777083452048",type:"text",content:"ONIQUE",x:177.89011957899382,y:288.23888245991077,fontSize:49,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:1679,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"el-1777083472651",type:"text",content:"&",x:72.78260869565219,y:377.49975202512815,fontSize:45,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:183,lineHeight:1.1,rotation:0},
+  ]},
+  { id:"fleur", name:"Fleur", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#FAF8F5", elements:[
+    {id:"fl1",type:"text",content:"WELCOME TO THE WEDDING OF",x:30,y:55,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"fl2",type:"text",content:"Emma",x:20,y:90,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
+    {id:"fl3",type:"text",content:"&",x:30,y:195,fontSize:22,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,lineHeight:1.3,rotation:0},
+    {id:"fl4",type:"text",content:"Adrian",x:20,y:228,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
+    {id:"fl5",type:"divider",x:120,y:335,width:160},
+    {id:"fl6",type:"text",content:"12 JUNE 2025",x:30,y:355,fontSize:10,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"fl7",type:"text",content:"The Manor House, Somerset",x:30,y:378,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#C5B9AC",width:340,letterSpacing:2,lineHeight:1.5,rotation:0},
+  ]},
+  { id:"whimsy-wedding", name:"Whimsy", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F5F0EA", elements:[
+    {id:"wh1",type:"illustration",illustrationId:"dove",label:"Doves",x:110,y:30,width:180,height:80,color:"#9A8F85",rotation:0},
+    {id:"wh2",type:"text",content:"Welcome to Our",x:30,y:130,fontSize:18,fontId:"whimsy",italic:false,align:"center",color:"#5A4A3C",width:340,lineHeight:1.4,rotation:0},
+    {id:"wh3",type:"text",content:"Wedding",x:20,y:168,fontSize:52,fontId:"whimsy",italic:false,align:"center",color:"#3A3028",width:360,lineHeight:1.2,rotation:0},
+    {id:"wh4",type:"divider",x:100,y:240,width:200},
+    {id:"wh5",type:"text",content:"Amelia & James",x:30,y:265,fontSize:32,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:340,lineHeight:1.3,rotation:0},
+    {id:"wh6",type:"text",content:"14th June 2025  -  The Grand Estate",x:30,y:312,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:1,lineHeight:1.5,rotation:0},
+    {id:"wh7",type:"illustration",illustrationId:"bow",label:"Bow",x:140,y:350,width:120,height:100,color:"#C5B9AC",rotation:0},
+  ]},
+  { id:"fleur", name:"Fleur", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#FAF8F5", elements:[
+    {id:"fl1",type:"text",content:"WELCOME TO THE WEDDING OF",x:30,y:55,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"fl2",type:"text",content:"Emma",x:20,y:90,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
+    {id:"fl3",type:"text",content:"&",x:30,y:195,fontSize:22,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,lineHeight:1.3,rotation:0},
+    {id:"fl4",type:"text",content:"Adrian",x:20,y:228,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
+    {id:"fl5",type:"divider",x:120,y:335,width:160},
+    {id:"fl6",type:"text",content:"12 JUNE 2025",x:30,y:355,fontSize:10,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"fl7",type:"text",content:"The Manor House, Somerset",x:30,y:378,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#C5B9AC",width:340,letterSpacing:2,lineHeight:1.5,rotation:0},
+  ]},
+  { id:"whimsy-wedding", name:"Whimsy", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F5F0EA", elements:[
+    {id:"wh1",type:"illustration",illustrationId:"dove",label:"Doves",x:110,y:30,width:180,height:80,color:"#9A8F85",rotation:0},
+    {id:"wh2",type:"text",content:"Welcome to Our",x:30,y:130,fontSize:18,fontId:"whimsy",italic:false,align:"center",color:"#5A4A3C",width:340,lineHeight:1.4,rotation:0},
+    {id:"wh3",type:"text",content:"Wedding",x:20,y:168,fontSize:52,fontId:"whimsy",italic:false,align:"center",color:"#3A3028",width:360,lineHeight:1.2,rotation:0},
+    {id:"wh4",type:"divider",x:100,y:240,width:200},
+    {id:"wh5",type:"text",content:"Amelia & James",x:30,y:265,fontSize:32,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:340,lineHeight:1.3,rotation:0},
+    {id:"wh6",type:"text",content:"14th June 2025  -  The Grand Estate",x:30,y:312,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:1,lineHeight:1.5,rotation:0},
+    {id:"wh7",type:"illustration",illustrationId:"bow",label:"Bow",x:140,y:350,width:120,height:100,color:"#C5B9AC",rotation:0},
+  ]},
   { id:"welcome", name:"Welcome to Our Wedding", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F2EDE4", elements:[
     {id:"e1",type:"text",    content:"Welcome to Our",              x:30,y:80,  fontSize:26,fontId:"cormorant",  italic:true, align:"center",color:"#3A3028",width:340,lineHeight:1.35,rotation:0},
     {id:"e2",type:"text",    content:"Wedding",                     x:30,y:130, fontSize:52,fontId:"great-vibes",italic:false,align:"center",color:"#3A3028",width:340,lineHeight:1.2, rotation:0},
@@ -870,6 +934,7 @@ export default function LinenSignEditor() {
     link.rel = "stylesheet";
     link.href = `https://fonts.googleapis.com/css2?${FONTS.map(f => `family=${f.url}`).join("&")}&display=swap`;
     document.head.appendChild(link);
+    loadBrandFonts();
   }, []);
 
   // Measure canvas scale
@@ -1058,7 +1123,7 @@ export default function LinenSignEditor() {
     };
     window.addEventListener("mousemove", move2);
     window.addEventListener("mouseup", up);
-  }, [selectedIds, fit, setElements]);
+  }, [selectedIds, setElements]);
 
   const handleGroupResize = useCallback((origEls, groupX, groupY, ratio, commit) => {
     if (!origEls || !origEls.length) return;
@@ -1246,6 +1311,15 @@ export default function LinenSignEditor() {
             onMouseLeave={e => e.target.style.background="#3A3028"}>
             ADD TO CART
           </button>
+          {window.location.search.includes('dev=1') && (
+            <button onClick={()=>{
+              const j=JSON.stringify({id:template.id,name:template.name,category:template.category,availableSizes:template.availableSizes,sizeKey:template.sizeKey,background:bgColour,elements:elements},null,2);
+              navigator.clipboard.writeText(j);
+              alert('Copied to clipboard!');
+            }} style={{padding:"9px 16px",fontSize:11,letterSpacing:1,border:"1px solid #4A6741",borderRadius:6,background:"rgba(74,103,65,0.15)",cursor:"pointer",color:"#4A6741",fontFamily:"Georgia,serif"}}>
+              ⬇ Export JSON
+            </button>
+          )}
         </div>
       </div>
 
