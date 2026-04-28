@@ -169,13 +169,11 @@ const TEMPLATES = [
     {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:108.85507246376811,y:641.7406182840139,fontSize:12,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:423,letterSpacing:3,lineHeight:1.5,rotation:0},
   ]},
   { id:"fleur", name:"Fleur", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#FAF8F5", elements:[
-    {id:"fl1",type:"text",content:"WELCOME TO THE WEDDING OF",x:30,y:55,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"fl2",type:"text",content:"Emma",x:20,y:90,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
-    {id:"fl3",type:"text",content:"&",x:30,y:195,fontSize:22,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,lineHeight:1.3,rotation:0},
-    {id:"fl4",type:"text",content:"Adrian",x:20,y:228,fontSize:76,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:360,lineHeight:1.15,rotation:0},
-    {id:"fl5",type:"divider",x:120,y:335,width:160},
-    {id:"fl6",type:"text",content:"12 JUNE 2025",x:30,y:355,fontSize:10,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"fl7",type:"text",content:"The Manor House, Somerset",x:30,y:378,fontSize:9,fontId:"jost",italic:false,align:"center",color:"#C5B9AC",width:340,letterSpacing:2,lineHeight:1.5,rotation:0},
+    {id:"fl1",type:"text",content:"WELCOME TO \nTHE WEDDING OF",x:129.3482669311732,y:163.69565217391306,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#3A3028",width:464,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"fl2",type:"text",content:"Emma",x:108.85551330798478,y:233.11406844106466,fontSize:145,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:685,lineHeight:1.15,rotation:0},
+    {id:"el-1777346257908",type:"text",content:"&",x:171.69609301812972,y:305.6140684410646,fontSize:118,fontId:"madison",italic:false,align:"center",color:"#3A3028",width:642,lineHeight:1.35,rotation:0},
+    {id:"fl4",type:"text",content:"Adrian",x:72.30478867030362,y:387.54885104976023,fontSize:145,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:685,lineHeight:1.15,rotation:0},
+    {id:"fl6",type:"text",content:"12 JUNE 2025",x:129.3482669311732,y:602.8260869565217,fontSize:13,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:441,letterSpacing:3,lineHeight:1.5,rotation:0},
   ]},
   { id:"whimsy-wedding", name:"Whimsy", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F5F0EA", elements:[
     {id:"wh1",type:"illustration",illustrationId:"dove",label:"Doves",x:110,y:30,width:180,height:80,color:"#9A8F85",rotation:0},
