@@ -176,13 +176,7 @@ const TEMPLATES = [
     {id:"fl6",type:"text",content:"12 JUNE 2025",x:129.3482669311732,y:602.8260869565217,fontSize:13,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:441,letterSpacing:3,lineHeight:1.5,rotation:0},
   ]},
   { id:"whimsy-wedding", name:"Whimsy", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F5F0EA", elements:[
-    {id:"wh1",type:"illustration",illustrationId:"dove",label:"Doves",x:110,y:30,width:180,height:80,color:"#9A8F85",rotation:0},
-    {id:"wh2",type:"text",content:"Welcome to Our",x:30,y:130,fontSize:18,fontId:"whimsy",italic:false,align:"center",color:"#5A4A3C",width:340,lineHeight:1.4,rotation:0},
-    {id:"wh3",type:"text",content:"Wedding",x:20,y:168,fontSize:52,fontId:"whimsy",italic:false,align:"center",color:"#3A3028",width:360,lineHeight:1.2,rotation:0},
-    {id:"wh4",type:"divider",x:100,y:240,width:200},
-    {id:"wh5",type:"text",content:"Amelia & James",x:30,y:265,fontSize:32,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:340,lineHeight:1.3,rotation:0},
-    {id:"wh6",type:"text",content:"14th June 2025  -  The Grand Estate",x:30,y:312,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:340,letterSpacing:1,lineHeight:1.5,rotation:0},
-    {id:"wh7",type:"illustration",illustrationId:"bow",label:"Bow",x:140,y:350,width:120,height:100,color:"#C5B9AC",rotation:0},
+    {id:"wh5",type:"text",content:"Jessica\n& \nDaniel",x:86.5217391304348,y:298.3333333333333,fontSize:148,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:1560,lineHeight:0.8,rotation:0},
   ]},
   { id:"welcome", name:"Welcome to Our Wedding", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F2EDE4", elements:[
     {id:"e1",type:"text",    content:"Welcome to Our",              x:30,y:80,  fontSize:26,fontId:"cormorant",  italic:true, align:"center",color:"#3A3028",width:340,lineHeight:1.35,rotation:0},
