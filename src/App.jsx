@@ -64,8 +64,12 @@ function canvasDims(sizeKey) {
 function getUrlParams() {
   try {
     const p = new URLSearchParams(window.location.search);
-    return { type: p.get("type") || null, size: p.get("size") || null };
-  } catch { return { type: null, size: null }; }
+    return {
+      type:    p.get("type")    || null,
+      size:    p.get("size")    || null,
+      variant: p.get("variant") || null,
+    };
+  } catch { return { type: null, size: null, variant: null }; }
 }
 
 // ─── Snap helpers ─────────────────────────────────────────────────────────────
