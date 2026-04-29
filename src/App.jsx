@@ -1309,7 +1309,35 @@ export default function LinenSignEditor() {
             <span style={{fontSize:13}}>💾</span>
             {userEmail ? "SAVED ✓" : "SAVE DESIGN"}
           </button>
-          <button onClick={() => { setExportMsg("Design saved! PNG + JSON would attach to your Shopify cart."); setTimeout(() => setExportMsg(null), 5000); }}
+          <button onClick={() => {
+              const variantId = urlParams.variant;
+              if (!variantId) {
+                setExportMsg("Missing variant — please return to the product page and click Customise Your Sign.");
+                setTimeout(() => setExportMsg(null), 6000);
+                return;
+              }
+              const designPayload = {
+                templateId:   template?.id,
+                templateName: template?.name,
+                sizeKey:      template?.sizeKey,
+                background:   bgColour,
+                elements:     elements,
+              };
+              const sizeLabel = SIZES[template?.sizeKey]?.label || template?.sizeKey || "";
+              const summary   = (template?.name || "Custom Design") + (sizeLabel ? " (" + sizeLabel + ")" : "");
+              try {
+                window.parent.postMessage({
+                  type:    "linenSignAddToCart",
+                  variant: variantId,
+                  design:  JSON.stringify(designPayload),
+                  summary: summary,
+                }, "*");
+                setExportMsg("Adding to cart…");
+              } catch (e) {
+                setExportMsg("Could not send to cart: " + (e.message || "unknown error"));
+                setTimeout(() => setExportMsg(null), 6000);
+              }
+            }}
             style={{background:"#3A3028",color:"#F5F0E8",border:"none",borderRadius:6,
               padding:"10px 24px",fontSize:11,letterSpacing:2,cursor:"pointer",fontFamily:"Georgia,serif"}}
             onMouseEnter={e => e.target.style.background="#5A4A3C"}
