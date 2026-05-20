@@ -440,7 +440,7 @@ function TextScaleHandle({ el, onChange, onCommit, scale }) {
 }
 
 // ─── Canvas element ───────────────────────────────────────────────────────────
-function CanvasElement({ el, selected, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, scale }) {
+function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, scale }) {
   const [dragging, setDragging] = useState(false);
   const [editing,  setEditing]  = useState(false);
   const dragStart = useRef(null);
@@ -560,7 +560,7 @@ function CanvasElement({ el, selected, onSelect, onAddToSelection, onChange, onS
       style={{position:"absolute",left:el.x,top:el.y,width:el.width,height:el.height,...sel,...grab,...rotStyle}}>
       <img src={el.src} alt="" draggable={false}
         style={{width:"100%",height:"100%",objectFit:"contain",borderRadius:2,display:"block",pointerEvents:"none"}}/>
-      {selected && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
+      {selected && !multiSelect && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
     </div>
   );
 
@@ -569,7 +569,7 @@ function CanvasElement({ el, selected, onSelect, onAddToSelection, onChange, onS
       style={{position:"absolute",left:el.x,top:el.y,width:el.width,height:el.height,...sel,...grab,...rotStyle,
         display:"flex",alignItems:"center",justifyContent:"center"}}>
       <IllustrationThumb type={el.illustrationId} size={Math.min(el.width, el.height)} color={el.color || "#9A8F85"}/>
-      {selected && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
+      {selected && !multiSelect && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
     </div>
   );
 
@@ -618,7 +618,7 @@ function CanvasElement({ el, selected, onSelect, onAddToSelection, onChange, onS
             userSelect: editing ? "text" : "none",
           }}
         />
-        {selected && (
+        {selected && !multiSelect && (
           <>
             <RotationHandle onMouseDown={handleRotateMouseDown}/>
             <TextScaleHandle el={el} onChange={onChange} onCommit={onCommit} scale={scale}/>
@@ -774,7 +774,7 @@ function SaveModal({ onClose, onSave, existingEmail }) {
 }
 
 // ─── Group bounding box — shown when multiple elements selected ───────────────
-function GroupBoundingBox({ selectedIds, elements, scale, onGroupResize, onGroupDragStart }) {
+function GroupBoundingBox({ selectedIds, elements, scale, cw, ch, onGroupResize, onGroupDragStart }) {
   if (selectedIds.length < 2) return null;
 
   const sel = (elements || []).filter(e => selectedIds.includes(e.id));
@@ -793,7 +793,21 @@ function GroupBoundingBox({ selectedIds, elements, scale, onGroupResize, onGroup
   });
 
   const bw = maxX - minX, bh = maxY - minY;
-  const PAD = 10;
+  const PAD = 8;
+  const HANDLE = 14;       // visible square handle (Canva-style)
+  const HANDLE_HALF = HANDLE / 2;
+
+  // Clamp the bbox so it (and its corner handle) stay inside the canvas.
+  // The handle hangs half-outside the bbox corner, so we leave HANDLE_HALF
+  // of breathing room on each side.
+  const safeLeft   = Math.max(HANDLE_HALF, minX - PAD);
+  const safeTop    = Math.max(HANDLE_HALF, minY - PAD);
+  const safeRight  = Math.min((cw || Infinity) - HANDLE_HALF, maxX + PAD);
+  const safeBottom = Math.min((ch || Infinity) - HANDLE_HALF, maxY + PAD);
+  const boxLeft   = safeLeft;
+  const boxTop    = safeTop;
+  const boxWidth  = Math.max(0, safeRight  - safeLeft);
+  const boxHeight = Math.max(0, safeBottom - safeTop);
 
   const handleResizeMouseDown = (e) => {
     e.stopPropagation(); e.preventDefault();
@@ -824,12 +838,12 @@ function GroupBoundingBox({ selectedIds, elements, scale, onGroupResize, onGroup
   return (
     <div style={{
       position: "absolute",
-      left:   minX - PAD,
-      top:    minY - PAD,
-      width:  bw + PAD * 2,
-      height: bh + PAD * 2,
-      border: "1.5px dashed rgba(138,123,108,0.6)",
-      borderRadius: 4,
+      left:   boxLeft,
+      top:    boxTop,
+      width:  boxWidth,
+      height: boxHeight,
+      border: "1.5px solid rgba(58,48,40,0.85)",
+      borderRadius: 2,
       pointerEvents: "none",
       zIndex: 120,
     }}>
@@ -842,18 +856,41 @@ function GroupBoundingBox({ selectedIds, elements, scale, onGroupResize, onGroup
           background: "transparent", zIndex: 121,
         }}
       />
-      {/* Corner resize handle — bottom right */}
-      <div
-        onMouseDown={handleResizeMouseDown}
-        style={{
-          position: "absolute", bottom: -7, right: -7,
-          width: 14, height: 14, borderRadius: "50%",
-          background: "#8A7B6C", border: "2px solid #fff",
-          cursor: "se-resize", pointerEvents: "auto", zIndex: 130,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
-          boxSizing: "border-box",
-        }}
-      />
+      {/* Canva-style corner handles — small white squares at all 4 corners.
+          Only the bottom-right is interactive (resize); the others are
+          purely visual so users immediately recognise it as a bounding box. */}
+      {[
+        { top: -HANDLE_HALF, left: -HANDLE_HALF, cursor: "default",   interactive: false },
+        { top: -HANDLE_HALF, right: -HANDLE_HALF, cursor: "default",  interactive: false },
+        { bottom: -HANDLE_HALF, left: -HANDLE_HALF, cursor: "default",interactive: false },
+        { bottom: -HANDLE_HALF, right: -HANDLE_HALF, cursor: "nwse-resize", interactive: true },
+      ].map((pos, i) => (
+        <div
+          key={i}
+          onMouseDown={pos.interactive ? handleResizeMouseDown : undefined}
+          style={{
+            position: "absolute",
+            top: pos.top, left: pos.left, right: pos.right, bottom: pos.bottom,
+            width: HANDLE, height: HANDLE, borderRadius: 2,
+            background: "#fff",
+            border: "1.5px solid rgba(58,48,40,0.85)",
+            cursor: pos.cursor,
+            pointerEvents: pos.interactive ? "auto" : "none",
+            zIndex: 130,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+            boxSizing: "border-box",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          {pos.interactive && (
+            <svg width="8" height="8" viewBox="0 0 8 8" style={{ pointerEvents: "none" }}>
+              <path d="M1.5 6.5 L6.5 1.5 M4 6.5 L6.5 6.5 L6.5 4 M1.5 4 L1.5 1.5 L4 1.5"
+                stroke="rgba(58,48,40,0.85)" strokeWidth="1.2" fill="none"
+                strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -1445,6 +1482,8 @@ export default function LinenSignEditor() {
                   selectedIds={selectedIds}
                   elements={staged ?? elementsRef.current ?? []}
                   scale={scale}
+                  cw={cw}
+                  ch={ch}
                   onGroupResize={handleGroupResize}
                   onGroupDragStart={handleGroupDragStart}/>
               )}
@@ -1462,6 +1501,7 @@ export default function LinenSignEditor() {
               {displayElements.map(el => (
                 <CanvasElement key={el.id} el={el}
                   selected={selectedIds.includes(el.id)}
+                  multiSelect={selectedIds.length > 1}
                   onSelect={(id, additive) => {
                     if (additive) setSelectedIds(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
                     else setSelectedIds([id]);
