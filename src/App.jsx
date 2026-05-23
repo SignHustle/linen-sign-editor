@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 
 // ─── Google Fonts ─────────────────────────────────────────────────────────────
 const FONTS = [
@@ -73,20 +73,45 @@ function getUrlParams() {
 }
 
 // ─── Snap helpers ─────────────────────────────────────────────────────────────
-const SNAP_THRESHOLD = 6;
-function getSnapLines(elements, draggingId, cw) {
-  const xLines = [0, cw / 2, cw], yLines = [];
+const SNAP_THRESHOLD = 10;
+// `kind` is "canvas" for canvas centre/edges, "element" for element-to-element.
+// `draggingId` accepts a string, an array of ids, or a Set — any element whose
+// id is in there is excluded from the snap-line candidates (used for group
+// drags, where every selected element should be ignored).
+function getSnapLines(elements, draggingId, cw, ch) {
+  const ignore = draggingId instanceof Set
+    ? draggingId
+    : new Set(Array.isArray(draggingId) ? draggingId : [draggingId]);
+  // Canvas snap lines: left/centre/right and top/middle/bottom of the page
+  const xLines = [
+    { v: 0,      kind: "canvas" },
+    { v: cw / 2, kind: "canvas" },
+    { v: cw,     kind: "canvas" },
+  ];
+  const yLines = [
+    { v: 0,      kind: "canvas" },
+    { v: ch / 2, kind: "canvas" },
+    { v: ch,     kind: "canvas" },
+  ];
   elements.forEach(el => {
-    if (el.id === draggingId || el.type === "divider") return;
+    if (ignore.has(el.id) || el.type === "divider" || el.hidden) return;
     const w = el.width || 0, h = el.height || el.fontSize || 0;
-    xLines.push(el.x, el.x + w / 2, el.x + w);
-    yLines.push(el.y, el.y + h / 2, el.y + h);
+    xLines.push({ v: el.x,         kind: "element" });
+    xLines.push({ v: el.x + w / 2, kind: "element" });
+    xLines.push({ v: el.x + w,     kind: "element" });
+    yLines.push({ v: el.y,         kind: "element" });
+    yLines.push({ v: el.y + h / 2, kind: "element" });
+    yLines.push({ v: el.y + h,     kind: "element" });
   });
-  return { xLines: [...new Set(xLines)], yLines: [...new Set(yLines)] };
+  return { xLines, yLines };
 }
 function snapVal(v, lines) {
-  for (const l of lines) if (Math.abs(v - l) < SNAP_THRESHOLD) return { snapped: l, guide: l };
-  return { snapped: v, guide: null };
+  let best = null;
+  for (const l of lines) {
+    const d = Math.abs(v - l.v);
+    if (d < SNAP_THRESHOLD && (!best || d < best.d)) best = { snapped: l.v, guide: l.v, kind: l.kind, d };
+  }
+  return best || { snapped: v, guide: null, kind: null };
 }
 function applySnap(x, y, w, h, xLines, yLines) {
   const cx = x + w / 2, rx = x + w, cy = y + h / 2, by = y + h;
@@ -94,9 +119,26 @@ function applySnap(x, y, w, h, xLines, yLines) {
   const ys = [snapVal(y, yLines), snapVal(cy, yLines), snapVal(by, yLines)];
   const xOffsets = [0, -w / 2, -w], yOffsets = [0, -h / 2, -h];
   let bestX = null, bestY = null;
-  xs.forEach((s, i) => { if (s.guide !== null && (!bestX || Math.abs(s.snapped - [x, cx, rx][i]) < Math.abs(bestX.dist))) bestX = { val: s.snapped + xOffsets[i], guide: s.guide, dist: Math.abs(s.snapped - [x, cx, rx][i]) }; });
-  ys.forEach((s, i) => { if (s.guide !== null && (!bestY || Math.abs(s.snapped - [y, cy, by][i]) < Math.abs(bestY.dist))) bestY = { val: s.snapped + yOffsets[i], guide: s.guide, dist: Math.abs(s.snapped - [y, cy, by][i]) }; });
-  return { x: bestX ? bestX.val : x, y: bestY ? bestY.val : y, guideX: bestX ? bestX.guide : null, guideY: bestY ? bestY.guide : null };
+  xs.forEach((s, i) => {
+    if (s.guide !== null) {
+      const dist = Math.abs(s.snapped - [x, cx, rx][i]);
+      if (!bestX || dist < bestX.dist) bestX = { val: s.snapped + xOffsets[i], guide: s.guide, kind: s.kind, dist };
+    }
+  });
+  ys.forEach((s, i) => {
+    if (s.guide !== null) {
+      const dist = Math.abs(s.snapped - [y, cy, by][i]);
+      if (!bestY || dist < bestY.dist) bestY = { val: s.snapped + yOffsets[i], guide: s.guide, kind: s.kind, dist };
+    }
+  });
+  return {
+    x: bestX ? bestX.val : x,
+    y: bestY ? bestY.val : y,
+    guideX:     bestX ? bestX.guide : null,
+    guideY:     bestY ? bestY.guide : null,
+    guideXKind: bestX ? bestX.kind  : null,
+    guideYKind: bestY ? bestY.kind  : null,
+  };
 }
 
 // ─── Undo/redo ────────────────────────────────────────────────────────────────
@@ -257,12 +299,15 @@ function LinenTexture({ opacity=0.18, uid="linen" }) {
 }
 
 // ─── Snap guides ──────────────────────────────────────────────────────────────
-function SnapGuides({ guideX, guideY, cw, ch }) {
+function SnapGuides({ guideX, guideY, guideXKind, guideYKind, cw, ch }) {
   if (guideX === null && guideY === null) return null;
+  // Canvas-centre snaps render bright pink; element-to-element snaps render purple.
+  const colorX = guideXKind === "canvas" ? "#E91E63" : "#6A4FB6";
+  const colorY = guideYKind === "canvas" ? "#E91E63" : "#6A4FB6";
   return (
     <svg style={{position:"absolute",inset:0,width:cw,height:ch,pointerEvents:"none",zIndex:99}} viewBox={`0 0 ${cw} ${ch}`}>
-      {guideX !== null && <line x1={guideX} y1={0} x2={guideX} y2={ch} stroke="#E07060" strokeWidth="0.8" strokeDasharray="4,3" opacity="0.8"/>}
-      {guideY !== null && <line x1={0} y1={guideY} x2={cw} y2={guideY} stroke="#E07060" strokeWidth="0.8" strokeDasharray="4,3" opacity="0.8"/>}
+      {guideX !== null && <line x1={guideX} y1={0} x2={guideX} y2={ch} stroke={colorX} strokeWidth="1.2" strokeDasharray="5,3" opacity="0.95"/>}
+      {guideY !== null && <line x1={0} y1={guideY} x2={cw} y2={guideY} stroke={colorY} strokeWidth="1.2" strokeDasharray="5,3" opacity="0.95"/>}
     </svg>
   );
 }
@@ -271,21 +316,30 @@ function SnapGuides({ guideX, guideY, cw, ch }) {
 function RotationHandle({ onMouseDown }) {
   return (
     <div onMouseDown={onMouseDown} title="Drag to rotate"
-      style={{position:"absolute",top:-28,left:"50%",transform:"translateX(-50%)",
-        width:18,height:18,borderRadius:"50%",background:"#8A7B6C",border:"2px solid #fff",
+      style={{position:"absolute",bottom:-30,left:"50%",transform:"translateX(-50%)",
+        width:18,height:18,borderRadius:"50%",background:"#fff",
+        border:"1.5px solid rgba(58,48,40,0.85)",
         cursor:"crosshair",zIndex:21,display:"flex",alignItems:"center",justifyContent:"center",
-        boxSizing:"border-box",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}>
-      <span style={{fontSize:9,color:"#fff",lineHeight:1,userSelect:"none"}}>↻</span>
+        boxSizing:"border-box",boxShadow:"0 1px 3px rgba(0,0,0,0.18)"}}>
+      <span style={{fontSize:11,color:"rgba(58,48,40,0.85)",lineHeight:1,userSelect:"none"}}>↻</span>
     </div>
   );
 }
 
 function ResizeHandle({ onMouseDown }) {
   return (
-    <div onMouseDown={onMouseDown}
-      style={{position:"absolute",bottom:-6,right:-6,width:13,height:13,
-        background:"#8A7B6C",borderRadius:"50%",cursor:"se-resize",zIndex:20,
-        border:"2px solid #fff",boxSizing:"border-box"}}/>
+    <div onMouseDown={onMouseDown} title="Drag to resize"
+      style={{position:"absolute",bottom:-7,right:-7,width:14,height:14,
+        background:"#fff",borderRadius:2,cursor:"nwse-resize",zIndex:20,
+        border:"1.5px solid rgba(58,48,40,0.85)",boxSizing:"border-box",
+        boxShadow:"0 1px 3px rgba(0,0,0,0.18)",
+        display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <svg width="8" height="8" viewBox="0 0 8 8" style={{pointerEvents:"none"}}>
+        <path d="M1.5 6.5 L6.5 1.5 M4 6.5 L6.5 6.5 L6.5 4 M1.5 4 L1.5 1.5 L4 1.5"
+          stroke="rgba(58,48,40,0.85)" strokeWidth="1.2" fill="none"
+          strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
   );
 }
 
@@ -405,11 +459,16 @@ function TextScaleHandle({ el, onChange, onCommit, scale }) {
   const handleMouseDown = (e) => {
     e.stopPropagation(); e.preventDefault();
     const startX  = e.clientX;
+    const startY  = e.clientY;
     const startW  = el.width || 340;
     const startFs = el.fontSize || 22;
     const move = (ev) => {
-      const dw    = (ev.clientX - startX) / scale;
-      const nw    = Math.max(30, startW + dw);
+      // Use the larger of horizontal/vertical drag so the diagonal corner
+      // handle feels natural in either direction.
+      const dx = (ev.clientX - startX) / scale;
+      const dy = (ev.clientY - startY) / scale;
+      const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+      const nw    = Math.max(30, startW + delta);
       // Font size scales proportionally with box width
       const ratio = nw / startW;
       const nfs   = Math.max(6, Math.round(startFs * ratio));
@@ -425,22 +484,27 @@ function TextScaleHandle({ el, onChange, onCommit, scale }) {
   };
   return (
     <div onMouseDown={handleMouseDown} title="Drag to resize text"
-      style={{position:"absolute",top:"50%",right:-8,transform:"translateY(-50%)",
-        width:16,height:28,borderRadius:4,background:"#8A7B6C",cursor:"ew-resize",zIndex:22,
-        border:"2px solid #fff",boxSizing:"border-box",
-        display:"flex",alignItems:"center",justifyContent:"center",
-        boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}>
-      <div style={{display:"flex",flexDirection:"column",gap:2}}>
-        <div style={{width:2,height:2,borderRadius:"50%",background:"#fff"}}/>
-        <div style={{width:2,height:2,borderRadius:"50%",background:"#fff"}}/>
-        <div style={{width:2,height:2,borderRadius:"50%",background:"#fff"}}/>
-      </div>
+      style={{position:"absolute",bottom:-7,right:-7,width:14,height:14,
+        background:"#fff",borderRadius:2,cursor:"nwse-resize",zIndex:22,
+        border:"1.5px solid rgba(58,48,40,0.85)",boxSizing:"border-box",
+        boxShadow:"0 1px 3px rgba(0,0,0,0.18)",
+        display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <svg width="8" height="8" viewBox="0 0 8 8" style={{pointerEvents:"none"}}>
+        <path d="M1.5 6.5 L6.5 1.5 M4 6.5 L6.5 6.5 L6.5 4 M1.5 4 L1.5 1.5 L4 1.5"
+          stroke="rgba(58,48,40,0.85)" strokeWidth="1.2" fill="none"
+          strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
     </div>
   );
 }
 
 // ─── Canvas element ───────────────────────────────────────────────────────────
-function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, scale }) {
+function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, onContextMenu, scale }) {
+  const handleContextMenu = (e) => {
+    if (!onContextMenu) return;
+    e.preventDefault(); e.stopPropagation();
+    onContextMenu(el.id, e.clientX, e.clientY);
+  };
   const [dragging, setDragging] = useState(false);
   const [editing,  setEditing]  = useState(false);
   const dragStart = useRef(null);
@@ -468,6 +532,7 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
     if (editing) return;
     e.stopPropagation(); e.preventDefault();
     onSelect(el.id, e.shiftKey); // pass shift key for additive selection
+    if (el.locked) return; // locked: select-only, no drag/resize
     dragStart.current = { mx:e.clientX, my:e.clientY, ex:el.x, ey:el.y, moved:false, openEdit: el.type === "text" && !e.shiftKey };
     setDragging(true);
   };
@@ -519,12 +584,17 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
 
   const handleRotateMouseDown = (e) => {
     e.stopPropagation(); e.preventDefault();
-    const cx = el.x + (el.width || 100) / 2;
-    const cy = el.y + (el.height || el.fontSize || 20) / 2;
-    const startAngle = Math.atan2(e.clientY - cy * scale, e.clientX - cx * scale) * 180 / Math.PI;
+    // Use the actual on-screen bounding rect of the visible element so the
+    // rotation pivot always matches the centre the CSS transform-origin
+    // rotates around — works for any width / text alignment.
+    const visibleEl = e.currentTarget.parentElement;
+    const r = visibleEl.getBoundingClientRect();
+    const cx = r.left + r.width  / 2;
+    const cy = r.top  + r.height / 2;
+    const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
     const startRot = rot;
     const move = (ev) => {
-      const angle = Math.atan2(ev.clientY - cy * scale, ev.clientX - cx * scale) * 180 / Math.PI;
+      const angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
       let delta = angle - startAngle + startRot;
       const snaps = [0, 45, 90, 135, 180, -135, -90, -45];
       for (const s of snaps) { if (Math.abs(((delta % 360) + 360) % 360 - ((s + 360) % 360)) < 4) { delta = s; break; } }
@@ -549,27 +619,30 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
   };
 
   if (el.type === "divider") return (
-    <div onMouseDown={handleMouseDown} onClick={e => { e.stopPropagation(); onSelect(el.id); }}
+    <div onMouseDown={handleMouseDown} onClick={e => { e.stopPropagation(); onSelect(el.id); }} onContextMenu={handleContextMenu}
+      data-bbox-id={el.id}
       style={{position:"absolute",left:el.x,top:el.y,width:el.width,padding:"8px 0",...sel,cursor:"move",...rotStyle}}>
       <div style={{height:1,background:"rgba(90,74,60,0.25)"}}/>
     </div>
   );
 
   if (el.type === "image") return (
-    <div onMouseDown={handleMouseDown} onClick={e => { e.stopPropagation(); onSelect(el.id); }}
+    <div onMouseDown={handleMouseDown} onClick={e => { e.stopPropagation(); onSelect(el.id); }} onContextMenu={handleContextMenu}
+      data-bbox-id={el.id}
       style={{position:"absolute",left:el.x,top:el.y,width:el.width,height:el.height,...sel,...grab,...rotStyle}}>
       <img src={el.src} alt="" draggable={false}
         style={{width:"100%",height:"100%",objectFit:"contain",borderRadius:2,display:"block",pointerEvents:"none"}}/>
-      {selected && !multiSelect && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
+      {selected && !multiSelect && !el.locked && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
     </div>
   );
 
   if (el.type === "illustration") return (
-    <div onMouseDown={handleMouseDown} onClick={e => { e.stopPropagation(); onSelect(el.id); }}
+    <div onMouseDown={handleMouseDown} onClick={e => { e.stopPropagation(); onSelect(el.id); }} onContextMenu={handleContextMenu}
+      data-bbox-id={el.id}
       style={{position:"absolute",left:el.x,top:el.y,width:el.width,height:el.height,...sel,...grab,...rotStyle,
         display:"flex",alignItems:"center",justifyContent:"center"}}>
       <IllustrationThumb type={el.illustrationId} size={Math.min(el.width, el.height)} color={el.color || "#9A8F85"}/>
-      {selected && !multiSelect && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
+      {selected && !multiSelect && !el.locked && <><RotationHandle onMouseDown={handleRotateMouseDown}/><ResizeHandle onMouseDown={handleResizeMouseDown}/></>}
     </div>
   );
 
@@ -586,16 +659,22 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
         overflow:"visible",
         background:"transparent",
         pointerEvents:"none",
-        borderRadius:2,...rotStyle,
+        borderRadius:2,
+        textAlign: el.align || "center",
       }}>
-      {/* Wrapper that hugs text width — this is the actual hit area */}
+      {/* Wrapper that hugs text width — this is the actual hit area.
+          Rotation is applied here (not the outer 340-wide container) so the
+          pivot is the centre of the visible text, not the container. */}
       <div
         onMouseDown={handleMouseDown}
+        onContextMenu={handleContextMenu}
+        data-bbox-id={el.id}
         style={{position:"relative", display:"inline-block",
           cursor: dragging ? "grabbing" : "grab", userSelect:"none",
           pointerEvents:"auto",
           outline: (selected && !editing) ? "1.5px dashed rgba(138,123,108,0.75)" : "none",
           outlineOffset: 3,
+          ...rotStyle,
         }}>
         <div
           ref={textRef}
@@ -618,7 +697,7 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
             userSelect: editing ? "text" : "none",
           }}
         />
-        {selected && !multiSelect && (
+        {selected && !multiSelect && !el.locked && (
           <>
             <RotationHandle onMouseDown={handleRotateMouseDown}/>
             <TextScaleHandle el={el} onChange={onChange} onCommit={onCommit} scale={scale}/>
@@ -775,23 +854,60 @@ function SaveModal({ onClose, onSave, existingEmail }) {
 
 // ─── Group bounding box — shown when multiple elements selected ───────────────
 function GroupBoundingBox({ selectedIds, elements, scale, cw, ch, onGroupResize, onGroupDragStart }) {
-  if (selectedIds.length < 2) return null;
-
+  // Fallback bounds from element data — used on first render before DOM measurement.
   const sel = (elements || []).filter(e => selectedIds.includes(e.id));
-  if (!sel.length) return null;
-
-  // Compute bounding box over all selected elements
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let fbMinX = Infinity, fbMinY = Infinity, fbMaxX = -Infinity, fbMaxY = -Infinity;
   sel.forEach(el => {
-    const x = el.x, y = el.y;
     const w = el.width || 100;
     const h = el.height || el.fontSize || 20;
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x + w);
-    maxY = Math.max(maxY, y + h);
+    fbMinX = Math.min(fbMinX, el.x);
+    fbMinY = Math.min(fbMinY, el.y);
+    fbMaxX = Math.max(fbMaxX, el.x + w);
+    fbMaxY = Math.max(fbMaxY, el.y + h);
   });
 
+  // Measure actual rendered bounds of each selected element's visible div.
+  // This is the only way to get tight bounds around text (since the text's
+  // container is much wider than the rendered glyphs).
+  const [measured, setMeasured] = useState(null);
+  useLayoutEffect(() => {
+    if (selectedIds.length < 2) { setMeasured(null); return; }
+    const canvas = document.querySelector('[data-canvas-root]');
+    if (!canvas) return;
+    const canvasRect = canvas.getBoundingClientRect();
+    let mnX = Infinity, mnY = Infinity, mxX = -Infinity, mxY = -Infinity;
+    let count = 0;
+    for (const id of selectedIds) {
+      const node = canvas.querySelector(`[data-bbox-id="${String(id).replace(/"/g, '\\"')}"]`);
+      if (!node) continue;
+      const r = node.getBoundingClientRect();
+      const s = scale || 1;
+      const x1 = (r.left   - canvasRect.left) / s;
+      const y1 = (r.top    - canvasRect.top ) / s;
+      const x2 = (r.right  - canvasRect.left) / s;
+      const y2 = (r.bottom - canvasRect.top ) / s;
+      mnX = Math.min(mnX, x1); mnY = Math.min(mnY, y1);
+      mxX = Math.max(mxX, x2); mxY = Math.max(mxY, y2);
+      count++;
+    }
+    if (!count) return;
+    const next = { minX: mnX, minY: mnY, maxX: mxX, maxY: mxY };
+    setMeasured(prev => {
+      if (prev &&
+          Math.abs(prev.minX - next.minX) < 0.5 &&
+          Math.abs(prev.minY - next.minY) < 0.5 &&
+          Math.abs(prev.maxX - next.maxX) < 0.5 &&
+          Math.abs(prev.maxY - next.maxY) < 0.5) {
+        return prev;
+      }
+      return next;
+    });
+  }, [selectedIds, elements, scale]);
+
+  if (selectedIds.length < 2 || !sel.length) return null;
+
+  const b = measured || { minX: fbMinX, minY: fbMinY, maxX: fbMaxX, maxY: fbMaxY };
+  const minX = b.minX, minY = b.minY, maxX = b.maxX, maxY = b.maxY;
   const bw = maxX - minX, bh = maxY - minY;
   const PAD = 8;
   const HANDLE = 14;       // visible square handle (Canva-style)
@@ -910,10 +1026,14 @@ export default function LinenSignEditor() {
   const [userEmail,        setUserEmail]        = useState(() => { try { return JSON.parse(localStorage.getItem("linenStudio_user") || "{}").email || ""; } catch { return ""; } });
   const [savedPulse,       setSavedPulse]       = useState(false);
   const [scale,            setScale]            = useState(1);
+  const [zoom,             setZoom]             = useState(1);
+  const [contextMenu,      setContextMenu]      = useState(null); // {x, y, ids: [...]} in viewport coords
   const [bgColour,         setBgColour]         = useState("#F2EDE4");
   const [palette,          setPalette]          = useState(DEFAULT_PALETTE);
   const [customFonts,      setCustomFonts]      = useState([]);
   const [guideX,           setGuideX]           = useState(null);
+  const [guideXKind,       setGuideXKind]       = useState(null);
+  const [guideYKind,       setGuideYKind]       = useState(null);
   const [guideY,           setGuideY]           = useState(null);
   const [staged,           setStaged]           = useState(null);
   const [marquee,          setMarquee]          = useState(null); // {x,y,w,h} in internal coords
@@ -933,9 +1053,16 @@ export default function LinenSignEditor() {
 
   const displayElements = staged ?? elements ?? [];
 
+  // Read the *latest* staged value via the functional setState callback so
+  // commits scheduled in the same tick as a setStaged call still see that
+  // staged value (otherwise the closure here would have null and the staged
+  // update would silently get stuck — symptom: text properties don't apply).
   const commitStaged = useCallback(() => {
-    if (staged) { setElements(staged); setStaged(null); }
-  }, [staged, setElements]);
+    setStaged(latest => {
+      if (latest) setElements(latest);
+      return null;
+    });
+  }, [setElements]);
 
   const updateElementStaged = useCallback((id, patch) => {
     setStaged(prev => {
@@ -993,15 +1120,19 @@ export default function LinenSignEditor() {
   };
 
   const handleSnap = useCallback((rawX, rawY, w, h, draggingId) => {
-    const { cw } = canvasDims(template?.sizeKey);
+    const { cw, ch } = canvasDims(template?.sizeKey);
     const base = staged ?? elementsRef.current ?? [];
-    const { xLines, yLines } = getSnapLines(base, draggingId, cw);
+    const { xLines, yLines } = getSnapLines(base, draggingId, cw, ch);
     const result = applySnap(rawX, rawY, w, h, xLines, yLines);
     setGuideX(result.guideX); setGuideY(result.guideY);
+    setGuideXKind(result.guideXKind); setGuideYKind(result.guideYKind);
     return { x: result.x, y: result.y };
   }, [staged, template]);
 
-  const handleSnapEnd = useCallback(() => { setGuideX(null); setGuideY(null); }, []);
+  const handleSnapEnd = useCallback(() => {
+    setGuideX(null); setGuideY(null);
+    setGuideXKind(null); setGuideYKind(null);
+  }, []);
 
   const selectedEl = displayElements.find(e => e.id === selectedId);
 
@@ -1031,6 +1162,78 @@ export default function LinenSignEditor() {
     }).filter(Boolean);
     setElements(els => [...els, ...copies]);
     setSelectedIds(copies.map(c => c.id));
+  };
+
+  // Duplicate a specific list of ids (used by the right-click menu).
+  const duplicateIds = (ids) => {
+    if (!ids || !ids.length) return;
+    const base = elementsRef.current ?? [];
+    const copies = ids.map((id, i) => {
+      const el = base.find(e => e.id === id);
+      if (!el) return null;
+      return { ...JSON.parse(JSON.stringify(el)), id:`el-${Date.now()+i}`, x:el.x+16, y:el.y+16 };
+    }).filter(Boolean);
+    setElements(els => [...els, ...copies]);
+    setSelectedIds(copies.map(c => c.id));
+  };
+
+  const deleteIds = (ids) => {
+    if (!ids || !ids.length) return;
+    setElements(els => els.filter(el => !ids.includes(el.id)));
+    setSelectedIds([]);
+  };
+
+  // Z-order: end of the array renders on top.
+  const bringToFront = (ids) => {
+    if (!ids || !ids.length) return;
+    setElements(els => {
+      const top  = els.filter(e =>  ids.includes(e.id));
+      const rest = els.filter(e => !ids.includes(e.id));
+      return [...rest, ...top];
+    });
+  };
+  const sendToBack = (ids) => {
+    if (!ids || !ids.length) return;
+    setElements(els => {
+      const back = els.filter(e =>  ids.includes(e.id));
+      const rest = els.filter(e => !ids.includes(e.id));
+      return [...back, ...rest];
+    });
+  };
+  const moveOneUp = (id) => {
+    setElements(els => {
+      const i = els.findIndex(e => e.id === id);
+      if (i < 0 || i === els.length - 1) return els;
+      const copy = els.slice();
+      [copy[i], copy[i + 1]] = [copy[i + 1], copy[i]];
+      return copy;
+    });
+  };
+  const moveOneDown = (id) => {
+    setElements(els => {
+      const i = els.findIndex(e => e.id === id);
+      if (i <= 0) return els;
+      const copy = els.slice();
+      [copy[i], copy[i - 1]] = [copy[i - 1], copy[i]];
+      return copy;
+    });
+  };
+
+  const toggleHidden = (id) => {
+    setElements(els => els.map(e => e.id === id ? { ...e, hidden: !e.hidden } : e));
+  };
+  const toggleLocked = (id) => {
+    setElements(els => els.map(e => e.id === id ? { ...e, locked: !e.locked } : e));
+  };
+
+  const openContextMenu = (clientX, clientY, elementId) => {
+    // If right-clicking an element that isn't already in selection, change
+    // selection to just that element so the menu actions target it.
+    const targetIds = (elementId && selectedIds.includes(elementId))
+      ? selectedIds
+      : (elementId ? [elementId] : selectedIds);
+    if (elementId && !selectedIds.includes(elementId)) setSelectedIds([elementId]);
+    setContextMenu({ x: clientX, y: clientY, ids: targetIds });
   };
 
   const handlePhotoUpload = (e) => {
@@ -1093,53 +1296,63 @@ export default function LinenSignEditor() {
 
   const handleGroupDragStart = useCallback((e) => {
     e.stopPropagation(); e.preventDefault();
-    const rect = canvasRef.current.getBoundingClientRect();
     // Snapshot positions of all selected elements at drag start
-    const startPositions = (elementsRef.current ?? [])
-      .filter(el => selectedIds.includes(el.id))
-      .map(el => ({ id: el.id, x: el.x, y: el.y }));
+    const sel = (elementsRef.current ?? []).filter(el => selectedIds.includes(el.id));
+    const startPositions = sel.map(el => ({ id: el.id, x: el.x, y: el.y }));
+    if (!sel.length) return;
+
+    // Compute the selection's bounding box (in canvas-internal coords) so we
+    // can snap the whole group's edges/centre to the canvas + other elements.
+    let groupMinX = Infinity, groupMinY = Infinity, groupMaxX = -Infinity, groupMaxY = -Infinity;
+    sel.forEach(el => {
+      const w = el.width || 100, h = el.height || el.fontSize || 20;
+      groupMinX = Math.min(groupMinX, el.x);
+      groupMinY = Math.min(groupMinY, el.y);
+      groupMaxX = Math.max(groupMaxX, el.x + w);
+      groupMaxY = Math.max(groupMaxY, el.y + h);
+    });
+    const groupW = groupMaxX - groupMinX;
+    const groupH = groupMaxY - groupMinY;
+
     const startMx = e.clientX, startMy = e.clientY;
+    const selIds = selectedIds.slice();
 
     const move = (ev) => {
       const dx = (ev.clientX - startMx) / fitRef.current;
       const dy = (ev.clientY - startMy) / fitRef.current;
+      // Snap the group bbox as if it were a single element. All selected
+      // elements are excluded from the snap-target list so they only snap to
+      // canvas guides + other unselected elements.
+      const rawX = groupMinX + dx, rawY = groupMinY + dy;
+      const snapped = handleSnap(rawX, rawY, groupW, groupH, selIds);
+      const snapDx = snapped.x - groupMinX;
+      const snapDy = snapped.y - groupMinY;
+      groupDragRef.current = { lastDx: snapDx, lastDy: snapDy };
       const base = elementsRef.current ?? [];
       setStaged(base.map(el => {
         const sp = startPositions.find(s => s.id === el.id);
         if (!sp) return el;
-        return { ...el, x: sp.x + dx, y: sp.y + dy };
+        return { ...el, x: sp.x + snapDx, y: sp.y + snapDy };
       }));
     };
     const up = () => {
+      const dx = groupDragRef.current?.lastDx ?? 0;
+      const dy = groupDragRef.current?.lastDy ?? 0;
+      const base = elementsRef.current ?? [];
       setStaged(null);
-      const base = elementsRef.current ?? [];
-      const dx = (groupDragRef.current?.lastDx ?? 0);
-      const dy = (groupDragRef.current?.lastDy ?? 0);
-      // Compute final positions from last move
       setElements(base.map(el => {
-        const sp = startPositions.find(s => s.id === el.id);
-        if (!sp) return el;
-        return { ...el, x: sp.x + (groupDragRef.current?.lastDx ?? 0), y: sp.y + (groupDragRef.current?.lastDy ?? 0) };
-      }));
-      groupDragRef.current = null;
-      window.removeEventListener("mousemove", move2);
-      window.removeEventListener("mouseup", up);
-    };
-    // Wrapper that also tracks last dx/dy for commit
-    const move2 = (ev) => {
-      const dx = (ev.clientX - startMx) / fitRef.current;
-      const dy = (ev.clientY - startMy) / fitRef.current;
-      groupDragRef.current = { lastDx: dx, lastDy: dy };
-      const base = elementsRef.current ?? [];
-      setStaged(base.map(el => {
         const sp = startPositions.find(s => s.id === el.id);
         if (!sp) return el;
         return { ...el, x: sp.x + dx, y: sp.y + dy };
       }));
+      groupDragRef.current = null;
+      handleSnapEnd();
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
     };
-    window.addEventListener("mousemove", move2);
+    window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
-  }, [selectedIds, setElements]);
+  }, [selectedIds, setElements, handleSnap, handleSnapEnd]);
 
   const handleGroupResize = useCallback((origEls, groupX, groupY, ratio, commit) => {
     if (!origEls || !origEls.length) return;
@@ -1295,9 +1508,11 @@ export default function LinenSignEditor() {
 
   const { cw, ch } = canvasDims(template?.sizeKey);
   const maxH = typeof window !== "undefined" ? window.innerHeight - 120 : 700;
-  const fit  = Math.min(maxH / ch, 460 / cw, 1);
+  const baseFit = Math.min(maxH / ch, 460 / cw, 1);
+  const fit  = baseFit * zoom;
   fitRef.current = fit; // keep ref in sync so callbacks can read it
   const dispW = Math.round(cw * fit), dispH = Math.round(ch * fit);
+  const zoomPct = Math.round(zoom * 100);
 
   return (
     <div style={{height:"100vh",background:"#F7F3EE",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",overflow:"hidden"}}>
@@ -1334,6 +1549,24 @@ export default function LinenSignEditor() {
                 {btn.label}
               </button>
             ))}
+          </div>
+          {/* Zoom controls */}
+          <div style={{display:"flex",alignItems:"center",gap:2,marginLeft:8,
+            border:"1px solid rgba(180,165,150,0.3)",borderRadius:6,padding:2}}>
+            <button onClick={() => setZoom(z => Math.max(0.25, +(z - 0.1).toFixed(2)))}
+              title="Zoom out (Ctrl+−)"
+              style={{padding:"3px 8px",fontSize:13,lineHeight:1,
+                border:"none",background:"transparent",cursor:"pointer",color:"#6B5E52",
+                fontFamily:"Georgia,serif"}}>−</button>
+            <button onClick={() => setZoom(1)} title="Reset zoom (Ctrl+0)"
+              style={{padding:"3px 8px",fontSize:10,letterSpacing:0.5,minWidth:42,
+                border:"none",background:"transparent",cursor:"pointer",color:"#6B5E52",
+                fontFamily:"Georgia,serif"}}>{zoomPct}%</button>
+            <button onClick={() => setZoom(z => Math.min(4, +(z + 0.1).toFixed(2)))}
+              title="Zoom in (Ctrl+=)"
+              style={{padding:"3px 8px",fontSize:13,lineHeight:1,
+                border:"none",background:"transparent",cursor:"pointer",color:"#6B5E52",
+                fontFamily:"Georgia,serif"}}>+</button>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1436,8 +1669,9 @@ export default function LinenSignEditor() {
         </div>
 
         {/* Canvas */}
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px 24px",overflow:"hidden"}}>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px 24px",overflow:"auto"}}>
           <div ref={canvasRef}
+            data-canvas-root
             style={{width:dispW,height:dispH,position:"relative",overflow:"hidden",
               background:bgColour,
               boxShadow:"0 8px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
@@ -1475,7 +1709,7 @@ export default function LinenSignEditor() {
                 window.addEventListener("mouseup", up);
               }}>
               <LinenTexture opacity={linenOpacity}/>
-              <SnapGuides guideX={guideX} guideY={guideY} cw={cw} ch={ch}/>
+              <SnapGuides guideX={guideX} guideY={guideY} guideXKind={guideXKind} guideYKind={guideYKind} cw={cw} ch={ch}/>
               {/* Group bounding box with resize handle */}
               {selectedIds.length > 1 && (
                 <GroupBoundingBox
@@ -1498,10 +1732,11 @@ export default function LinenSignEditor() {
                   borderRadius:2,
                 }}/>
               )}
-              {displayElements.map(el => (
+              {displayElements.filter(el => !el.hidden).map(el => (
                 <CanvasElement key={el.id} el={el}
                   selected={selectedIds.includes(el.id)}
                   multiSelect={selectedIds.length > 1}
+                  onContextMenu={(id, x, y) => openContextMenu(x, y, id)}
                   onSelect={(id, additive) => {
                     if (additive) setSelectedIds(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
                     else setSelectedIds([id]);
@@ -1538,6 +1773,62 @@ export default function LinenSignEditor() {
         {/* Right panel */}
         <div style={{width:268,background:"rgba(255,255,255,0.62)",borderLeft:"1px solid rgba(180,165,150,0.2)",
           overflowY:"auto",padding:20,flexShrink:0,zIndex:10}}>
+
+          {/* ── Layers panel ── */}
+          <div style={{marginBottom:20,paddingBottom:16,borderBottom:"1px solid rgba(180,165,150,0.25)"}}>
+            <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:10}}>LAYERS</div>
+            <div style={{display:"flex",flexDirection:"column",gap:1,maxHeight:220,overflowY:"auto"}}>
+              {elements.length === 0 && (
+                <div style={{fontSize:11,color:"#9A8F85",padding:"6px 0",textAlign:"center"}}>No elements yet</div>
+              )}
+              {elements.slice().reverse().map(el => {
+                const isSelected = selectedIds.includes(el.id);
+                const labelText = (() => {
+                  if (el.type === "text") {
+                    const t = (el.content || "").replace(/\s+/g, " ").trim();
+                    return t.length > 22 ? t.slice(0, 22) + "…" : (t || "Text");
+                  }
+                  if (el.type === "illustration") return "✾ " + (el.illustrationId || "Illustration");
+                  if (el.type === "image")        return "▣ Image";
+                  if (el.type === "divider")      return "— Divider";
+                  return el.type || "Element";
+                })();
+                return (
+                  <div key={el.id}
+                    onClick={() => setSelectedIds([el.id])}
+                    style={{
+                      display:"flex",alignItems:"center",gap:2,padding:"5px 6px",
+                      background: isSelected ? "rgba(138,123,108,0.18)" : "transparent",
+                      borderRadius:4,cursor:"pointer",fontSize:11,color:"#3A3028",
+                      opacity: el.hidden ? 0.5 : 1,
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "rgba(138,123,108,0.08)"; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}>
+                    <span style={{flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
+                      textDecoration: el.hidden ? "line-through" : "none"}}>
+                      {labelText}
+                    </span>
+                    <button onClick={e => { e.stopPropagation(); toggleHidden(el.id); }}
+                      title={el.hidden ? "Show" : "Hide"}
+                      style={{padding:"2px 4px",fontSize:11,background:"none",border:"none",cursor:"pointer",lineHeight:1,color:"#6B5E52"}}>
+                      {el.hidden ? "⊘" : "👁"}
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); toggleLocked(el.id); }}
+                      title={el.locked ? "Unlock" : "Lock"}
+                      style={{padding:"2px 4px",fontSize:11,background:"none",border:"none",cursor:"pointer",lineHeight:1,color:el.locked?"#3A3028":"#9A8F85"}}>
+                      {el.locked ? "🔒" : "🔓"}
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); moveOneUp(el.id); }}
+                      title="Move layer up" disabled={elements.indexOf(el) === elements.length - 1}
+                      style={{padding:"2px 4px",fontSize:11,background:"none",border:"none",cursor:"pointer",lineHeight:1,color:"#6B5E52"}}>↑</button>
+                    <button onClick={e => { e.stopPropagation(); moveOneDown(el.id); }}
+                      title="Move layer down" disabled={elements.indexOf(el) === 0}
+                      style={{padding:"2px 4px",fontSize:11,background:"none",border:"none",cursor:"pointer",lineHeight:1,color:"#6B5E52"}}>↓</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {selectedIds.length > 1 ? (
             /* ── Multiple elements selected ── */
@@ -1768,6 +2059,64 @@ export default function LinenSignEditor() {
         </div>
 
         {showLibrary && <IllustrationLibrary onAdd={addIllustration} onClose={() => setShowLibrary(false)}/>}
+
+        {contextMenu && (
+          <>
+            {/* Click-catcher to dismiss */}
+            <div onClick={() => setContextMenu(null)}
+              onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+              style={{position:"fixed",inset:0,zIndex:9998,background:"transparent"}}/>
+            <div style={{
+              position:"fixed",
+              left: Math.min(contextMenu.x, (typeof window !== "undefined" ? window.innerWidth  : 1000) - 200),
+              top:  Math.min(contextMenu.y, (typeof window !== "undefined" ? window.innerHeight : 800)  - 240),
+              zIndex:9999,
+              minWidth:180,
+              background:"#fff",
+              border:"1px solid rgba(180,165,150,0.4)",
+              borderRadius:6,
+              padding:"6px 0",
+              boxShadow:"0 8px 24px rgba(0,0,0,0.18)",
+              fontFamily:"Georgia,serif",
+              userSelect:"none",
+            }}>
+              {[
+                { label: "Duplicate",      action: () => duplicateIds(contextMenu.ids) },
+                { label: "Delete",         action: () => deleteIds(contextMenu.ids), divider: true },
+                { label: "Bring to front", action: () => bringToFront(contextMenu.ids) },
+                { label: "Send to back",   action: () => sendToBack(contextMenu.ids), divider: true },
+                {
+                  label: (contextMenu.ids.length === 1 &&
+                          elementsRef.current.find(e => e.id === contextMenu.ids[0])?.locked)
+                          ? "Unlock" : "Lock",
+                  action: () => contextMenu.ids.forEach(id => toggleLocked(id)),
+                },
+                {
+                  label: (contextMenu.ids.length === 1 &&
+                          elementsRef.current.find(e => e.id === contextMenu.ids[0])?.hidden)
+                          ? "Show" : "Hide",
+                  action: () => contextMenu.ids.forEach(id => toggleHidden(id)),
+                },
+              ].map((item, i) => (
+                <div key={i}>
+                  <div
+                    onClick={() => { item.action(); setContextMenu(null); }}
+                    style={{
+                      padding:"8px 16px",
+                      fontSize:12,
+                      color:"#3A3028",
+                      cursor:"pointer",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(138,123,108,0.12)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    {item.label}
+                  </div>
+                  {item.divider && <div style={{height:1,background:"rgba(180,165,150,0.25)",margin:"4px 0"}}/>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {showSaveModal && (
           <SaveModal
