@@ -1149,6 +1149,7 @@ export default function LinenSignEditor() {
   const canvasRef          = useRef(null);
   const fileRef            = useRef(null);
   const fontFileRef        = useRef(null);
+  const savedRangeRef      = useRef(null); // snapshot of selection when glyph picker opens
   const elementsRef        = useRef([]);
   const groupDragRef       = useRef(null); // stores {startPositions, mx, my} for group drag
   const fitRef             = useRef(1);    // mirrors the computed fit scale
@@ -1222,11 +1223,19 @@ export default function LinenSignEditor() {
   // button collapses the selection before the click event fires.
 
   const applyGlyphFeature = useCallback((tag) => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || !editingId) return;
-    const range = sel.getRangeAt(0);
+    if (!editingId) return;
     const textEl = document.querySelector(`[data-bbox-id="${editingId}"] [contenteditable]`);
     if (!textEl) return;
+
+    // By the time the button click fires, mousedown has already cleared the live
+    // selection.  Use the range we snapshotted when the picker opened instead.
+    const range = savedRangeRef.current;
+    if (!range) return;
+
+    // Re-apply the saved range so DOM mutation methods work correctly
+    const sel = window.getSelection();
+    if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+
     if (tag) {
       const span = document.createElement("span");
       span.style.fontFeatureSettings = `"${tag}" 1`;
@@ -2014,7 +2023,19 @@ export default function LinenSignEditor() {
                   scale={scale}
                   onEditStart={(id) => setEditingId(id)}
                   onEditEnd={() => { setEditingId(null); setGlyphPicker(null); }}
-                  onEditSelect={(data) => setGlyphPicker(data)}/>
+                  onEditSelect={(data) => {
+                    setGlyphPicker(data);
+                    if (data) {
+                      // Snapshot the live selection range now — by the time the user
+                      // clicks a picker button, mousedown will have cleared it.
+                      try {
+                        const s = window.getSelection();
+                        savedRangeRef.current = (s && s.rangeCount > 0) ? s.getRangeAt(0).cloneRange() : null;
+                      } catch { savedRangeRef.current = null; }
+                    } else {
+                      savedRangeRef.current = null;
+                    }
+                  }}/>
               ))}
             </div>
           </div>
