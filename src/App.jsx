@@ -21,6 +21,69 @@ const BRAND_FONTS = [
   { id:"madison", label:"Madison Script", family:"Madison",       file:"/Madison-Regular.ttf" },
   { id:"whimsy",  label:"Whimsy",         family:"Whimsy",        file:"/Whimsy.otf" },
 ];
+// ─── OpenType feature detection ──────────────────────────────────────────────
+const ALL_OT_FEATURES = [
+  { tag:"init", tip:"Initial Swash"  },
+  { tag:"fina", tip:"Final Swash"    },
+  { tag:"salt", tip:"Stylistic Alt"  },
+  { tag:"swsh", tip:"Swash"          },
+  { tag:"ss01", tip:"Style Set 1"    },
+  { tag:"ss02", tip:"Style Set 2"    },
+  { tag:"ss03", tip:"Style Set 3"    },
+  { tag:"ss04", tip:"Style Set 4"    },
+  { tag:"ss05", tip:"Style Set 5"    },
+  { tag:"ss06", tip:"Style Set 6"    },
+  { tag:"ss07", tip:"Style Set 7"    },
+  { tag:"ss08", tip:"Style Set 8"    },
+  { tag:"ss09", tip:"Style Set 9"    },
+  { tag:"ss10", tip:"Style Set 10"   },
+  { tag:"ss11", tip:"Style Set 11"   },
+  { tag:"ss12", tip:"Style Set 12"   },
+  { tag:"dlig", tip:"Ligature"       },
+  { tag:"calt", tip:"Contextual"     },
+];
+const _ALL_OT_TAG_SET = new Set(ALL_OT_FEATURES.map(f => f.tag));
+
+// fontId → string[] of supported feature tags; undefined = not yet probed
+const _fontFeatureCache = {};
+
+function _parseGSUBTags(buf) {
+  try {
+    const v = new DataView(buf);
+    const numTables = v.getUint16(4);
+    let gsubOff = -1;
+    for (let i = 0; i < numTables; i++) {
+      const b = 12 + i * 16;
+      const tag = String.fromCharCode(v.getUint8(b), v.getUint8(b+1), v.getUint8(b+2), v.getUint8(b+3));
+      if (tag === "GSUB") { gsubOff = v.getUint32(b + 8); break; }
+    }
+    if (gsubOff < 0) return [];
+    // GSUB 1.0 layout: majorVersion(2) minorVersion(2) scriptListOffset(2) featureListOffset(2)
+    const featListOff = gsubOff + v.getUint16(gsubOff + 4);
+    const featCount   = v.getUint16(featListOff);
+    const tags = new Set();
+    for (let i = 0; i < featCount; i++) {
+      const b = featListOff + 2 + i * 6;
+      const tag = String.fromCharCode(v.getUint8(b), v.getUint8(b+1), v.getUint8(b+2), v.getUint8(b+3))
+                    .replace(/\0/g, "").trim();
+      if (_ALL_OT_TAG_SET.has(tag)) tags.add(tag);
+    }
+    return [...tags];
+  } catch { return []; }
+}
+
+function _probeFontFromBuffer(fontId, buf) {
+  _fontFeatureCache[fontId] = _parseGSUBTags(buf);
+}
+
+async function _probeFontFromUrl(fontId, url) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    _fontFeatureCache[fontId] = _parseGSUBTags(await resp.arrayBuffer());
+  } catch { _fontFeatureCache[fontId] = []; }
+}
+
 let _brandFontsLoaded = false;
 function loadBrandFonts() {
   if (_brandFontsLoaded) return;
@@ -31,6 +94,8 @@ function loadBrandFonts() {
     const s = document.createElement("style");
     s.textContent = "@font-face{font-family:'" + f.family + "';src:url('" + f.file + "');}";
     document.head.appendChild(s);
+    // Probe the font binary for GSUB features
+    _probeFontFromUrl(f.id, f.file);
   });
 }
 
@@ -68,6 +133,7 @@ function getUrlParams() {
       type:    p.get("type")    || null,
       size:    p.get("size")    || null,
       variant: p.get("variant") || null,
+      dev:     p.get("dev")     === "true",
     };
   } catch { return { type: null, size: null, variant: null }; }
 }
@@ -207,19 +273,17 @@ function IllustrationThumb({ type, size = 60, color = "#9A8F85" }) {
 // ─── Templates ────────────────────────────────────────────────────────────────
 const TEMPLATES = [
   { id:"swan-lake", name:"Swan Lake", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#fffbf9", elements:[
-    {id:"el-1777083452047",type:"text",content:"M",x:38,y:324.2623574144487,fontSize:67,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:162,lineHeight:1.1,rotation:0},
-    {id:"el-1777083452048",type:"text",content:"ONIQUE",x:187.97393508568908,y:346.2623574144487,fontSize:45,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:311,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"el-1777083472651",type:"text",content:"&",x:61.959442332065905,y:417.0159806028545,fontSize:47,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:149,lineHeight:1.1,rotation:0},
-    {id:"sl5",type:"text",content:"J",x:117.06265498429492,y:452.42662699068717,fontSize:67,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:162,lineHeight:1.1,rotation:0},
-    {id:"el-1777083405654",type:"text",content:"AMES",x:215.4974375929906,y:483.6730038022813,fontSize:45,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:311,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:108.85507246376811,y:641.7406182840139,fontSize:12,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:423,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"el-1777083452047",type:"text",content:"M",x:35.03141276041666,y:311.3136882129278,fontSize:67,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:162,lineHeight:1.1,rotation:0},
+    {id:"el-1777083452048",type:"text",content:"ONIQUE",x:197.03141276041669,y:333.3136882129278,fontSize:45,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:311,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"sl5",type:"text",content:"J",x:93.10131412152317,y:448.7243346007604,fontSize:67,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:162,lineHeight:1.1,rotation:0},
+    {id:"el-1777083472651",type:"text",content:"&",x:35.03141276041666,y:401.7243346007604,fontSize:47,fontId:"mozart",italic:false,align:"center",color:"#1A1610",width:149,lineHeight:1.1,rotation:0},
+    {id:"el-1777083405654",type:"text",content:"AMES",x:216.17377788963915,y:482.2243346007604,fontSize:45,fontId:"dubiel",italic:false,align:"left",color:"#3A3028",width:311,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"sl7",type:"text",content:"29 NOVEMBER 2025",x:-11.5,y:617.1029371245936,fontSize:12,fontId:"dubiel",italic:false,align:"center",color:"#3A3028",width:423,letterSpacing:3,lineHeight:1.5,rotation:0},
   ]},
   { id:"fleur", name:"Fleur", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#FAF8F5", elements:[
-    {id:"fl1",type:"text",content:"WELCOME TO \nTHE WEDDING OF",x:129.3482669311732,y:163.69565217391306,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#3A3028",width:464,letterSpacing:3,lineHeight:1.5,rotation:0},
-    {id:"fl2",type:"text",content:"Emma",x:108.85551330798478,y:233.11406844106466,fontSize:145,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:685,lineHeight:1.15,rotation:0},
-    {id:"el-1777346257908",type:"text",content:"&",x:171.69609301812972,y:305.6140684410646,fontSize:118,fontId:"madison",italic:false,align:"center",color:"#3A3028",width:642,lineHeight:1.35,rotation:0},
-    {id:"fl4",type:"text",content:"Adrian",x:72.30478867030362,y:387.54885104976023,fontSize:145,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:685,lineHeight:1.15,rotation:0},
-    {id:"fl6",type:"text",content:"12 JUNE 2025",x:129.3482669311732,y:602.8260869565217,fontSize:13,fontId:"jost",italic:false,align:"center",color:"#9A8F85",width:441,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"fl1",type:"text",content:"WELCOME TO \nTHE WEDDING OF",x:-32,y:183.9855072463768,fontSize:12,fontId:"jost",italic:false,align:"center",color:"#3A3028",width:464,letterSpacing:3,lineHeight:1.5,rotation:0},
+    {id:"fl2",type:"text",content:"&nbsp; Emm<span style=\"font-feature-settings: &quot;ss03&quot;;\"><span style=\"font-feature-settings: &quot;ss04&quot;;\">a</span></span><br>&amp;<br>Adria<span style=\"font-feature-settings: &quot;ss04&quot;;\">n</span>",x:-142.5,y:307.37681159420293,fontSize:145,fontId:"madison",italic:false,align:"center",color:"#1A1610",width:685,lineHeight:0.6,rotation:0},
+    {id:"fl6",type:"text",content:"12 JUNE 2025",x:-20.5,y:656.4492753623189,fontSize:13,fontId:"jost",italic:false,align:"center",color:"#3A3028",width:441,letterSpacing:3,lineHeight:1.5,rotation:0},
   ]},
   { id:"whimsy-wedding", name:"Whimsy", category:"wedding-welcome", availableSizes:["700x1400","700x2000","700x3000","1400x2000"], sizeKey:"700x2000", background:"#F5F0EA", elements:[
     {id:"wh5",type:"text",content:"Jessica\n& \nDaniel",x:86.5217391304348,y:298.3333333333333,fontSize:148,fontId:"whimsy",italic:false,align:"center",color:"#6B5E52",width:1560,lineHeight:0.8,rotation:0},
@@ -499,7 +563,7 @@ function TextScaleHandle({ el, onChange, onCommit, scale }) {
 }
 
 // ─── Canvas element ───────────────────────────────────────────────────────────
-function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, onContextMenu, scale }) {
+function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, onContextMenu, scale, onEditStart, onEditEnd }) {
   const handleContextMenu = (e) => {
     if (!onContextMenu) return;
     e.preventDefault(); e.stopPropagation();
@@ -515,8 +579,11 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
 
   useEffect(() => {
     if (editing && textRef.current) {
-      // Restore content — switching away from dangerouslySetInnerHTML clears the div
-      textRef.current.innerText = el.content;
+      // Restore content — switching away from dangerouslySetInnerHTML clears the div.
+      // Use innerHTML so styled spans (per-character OT features) survive round-trips.
+      textRef.current.innerHTML = el.content.includes("<")
+        ? el.content
+        : el.content.replace(/\n/g, "<br>");
       textRef.current.focus();
       // Place cursor at end
       const range = document.createRange();
@@ -566,7 +633,7 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
     };
     const up = () => {
       setDragging(false); onSnapEnd(); onCommit();
-      if (dragStart.current?.openEdit && !dragStart.current?.moved) setEditing(true);
+      if (dragStart.current?.openEdit && !dragStart.current?.moved) { setEditing(true); onEditStart?.(el.id); }
     };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
@@ -608,6 +675,7 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
   const grab = { cursor: dragging ? "grabbing" : "grab", userSelect: "none" };
   const rotStyle = rot ? { transform: `rotate(${rot}deg)`, transformOrigin: "center center" } : {};
 
+  const otFeatures = el.openType || [];
   const textStyle = {
     fontFamily: font.family, fontSize: el.fontSize, color: el.color,
     textAlign: el.align || "center", fontStyle: el.italic ? "italic" : "normal",
@@ -616,6 +684,7 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
     WebkitTextStrokeWidth: el.strokeWidth ? `${el.strokeWidth}px` : undefined,
     WebkitTextStrokeColor: el.strokeWidth ? (el.strokeColor || el.color) : undefined,
     paintOrder: "stroke fill",
+    fontFeatureSettings: otFeatures.length ? otFeatures.map(f => `"${f}" 1`).join(", ") : undefined,
   };
 
   if (el.type === "divider") return (
@@ -664,12 +733,16 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
       }}>
       {/* Wrapper that hugs text width — this is the actual hit area.
           Rotation is applied here (not the outer 340-wide container) so the
-          pivot is the centre of the visible text, not the container. */}
+          pivot is the centre of the visible text, not the container.
+          width:max-content ensures the hit area matches the rendered glyph
+          width exactly, regardless of font loading timing — more reliable than
+          display:inline-block alone inside a text-align:center container. */}
       <div
         onMouseDown={handleMouseDown}
         onContextMenu={handleContextMenu}
         data-bbox-id={el.id}
         style={{position:"relative", display:"inline-block",
+          width: "max-content",
           cursor: dragging ? "grabbing" : "grab", userSelect:"none",
           pointerEvents:"auto",
           outline: (selected && !editing) ? "1.5px dashed rgba(138,123,108,0.75)" : "none",
@@ -682,8 +755,8 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
           suppressContentEditableWarning
           // Uncontrolled: don't pass content as children while editing —
           // let browser own the DOM. Only sync back on blur.
-          dangerouslySetInnerHTML={editing ? undefined : { __html: el.content.replace(/\n/g,"<br/>") }}
-          onBlur={e => { onChange({ content: e.currentTarget.innerText }); setEditing(false); onCommit(); }}
+          dangerouslySetInnerHTML={editing ? undefined : { __html: el.content.includes("<") ? el.content : el.content.replace(/\n/g,"<br/>") }}
+          onBlur={e => { onChange({ content: e.currentTarget.innerHTML }); setEditing(false); onEditEnd?.(); onCommit(); }}
           onKeyDown={handleContentKeyDown}
           onClick={e => e.stopPropagation()}
           style={{
@@ -965,7 +1038,7 @@ function GroupBoundingBox({ selectedIds, elements, scale, cw, ch, onGroupResize,
     }}>
       {/* Transparent drag area covers whole bbox for group move */}
       <div
-        onMouseDown={onGroupDragStart}
+        onMouseDown={(e) => onGroupDragStart(e, { minX, minY, w: maxX - minX, h: maxY - minY })}
         style={{
           position: "absolute", inset: 0,
           cursor: "grab", pointerEvents: "auto",
@@ -1038,13 +1111,16 @@ export default function LinenSignEditor() {
   const [staged,           setStaged]           = useState(null);
   const [marquee,          setMarquee]          = useState(null); // {x,y,w,h} in internal coords
   const [showLinenTexture, setShowLinenTexture] = useState(true);
+  const [editingId,        setEditingId]        = useState(null); // which element is in text-edit mode
+  const [glyphPicker,      setGlyphPicker]      = useState(null); // {x,y,text} floating alternate picker
 
-  const canvasRef    = useRef(null);
-  const fileRef      = useRef(null);
-  const fontFileRef  = useRef(null);
-  const elementsRef  = useRef([]);
-  const groupDragRef = useRef(null); // stores {startPositions, mx, my} for group drag
-  const fitRef       = useRef(1);    // mirrors the computed fit scale
+  const canvasRef          = useRef(null);
+  const fileRef            = useRef(null);
+  const fontFileRef        = useRef(null);
+  const elementsRef        = useRef([]);
+  const groupDragRef       = useRef(null); // stores {startPositions, mx, my} for group drag
+  const fitRef             = useRef(1);    // mirrors the computed fit scale
+  const ignoreNextCapture  = useRef(false); // skip one capture cycle after synthetic re-dispatch
 
   const { present: elements, set: setElements, undo, redo, canUndo, canRedo, reset: resetElements } = useUndoRedo([]);
 
@@ -1107,6 +1183,47 @@ export default function LinenSignEditor() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [stage, selectedId, undo, redo, setElements]);
+
+  // ── Glyph picker — show alternate forms when text is selected in edit mode ───
+  useEffect(() => {
+    if (!editingId) { setGlyphPicker(null); return; }
+    const onSelChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) { setGlyphPicker(null); return; }
+      const range = sel.getRangeAt(0);
+      const textEl = document.querySelector(`[data-bbox-id="${editingId}"] [contenteditable]`);
+      if (!textEl?.contains(range.commonAncestorContainer)) { setGlyphPicker(null); return; }
+      const text = sel.toString();
+      if (!text.trim()) { setGlyphPicker(null); return; }
+      const rect = range.getBoundingClientRect();
+      setGlyphPicker({ x: rect.left, y: rect.bottom, text });
+    };
+    document.addEventListener("selectionchange", onSelChange);
+    return () => { document.removeEventListener("selectionchange", onSelChange); setGlyphPicker(null); };
+  }, [editingId]);
+
+  const applyGlyphFeature = useCallback((tag) => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !editingId) return;
+    const range = sel.getRangeAt(0);
+    const textEl = document.querySelector(`[data-bbox-id="${editingId}"] [contenteditable]`);
+    if (!textEl) return;
+    if (tag) {
+      const span = document.createElement("span");
+      span.style.fontFeatureSettings = `"${tag}" 1`;
+      try { range.surroundContents(span); }
+      catch { const frag = range.extractContents(); span.appendChild(frag); range.insertNode(span); }
+    } else {
+      // "Original" — unwrap any existing feature spans around the selection
+      const frag = range.extractContents();
+      frag.querySelectorAll("span[style*=font-feature]").forEach(s => {
+        s.replaceWith(...s.childNodes);
+      });
+      range.insertNode(frag);
+    }
+    updateElementStaged(editingId, { content: textEl.innerHTML });
+    setGlyphPicker(null);
+  }, [editingId, updateElementStaged]);
 
   const openTemplate = (tmpl) => {
     if (tmpl.placeholder) return;
@@ -1263,6 +1380,10 @@ export default function LinenSignEditor() {
     const label = raw.charAt(0).toUpperCase() + raw.slice(1);
     const id = `custom-${Date.now()}`;
     const family = `CustomFont_${id}`;
+    // Probe GSUB features from raw binary (TTF/OTF only; WOFF ignored gracefully)
+    const bufReader = new FileReader();
+    bufReader.onload = (ev) => { _probeFontFromBuffer(id, ev.target.result); };
+    bufReader.readAsArrayBuffer(file);
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target.result;
@@ -1294,25 +1415,36 @@ export default function LinenSignEditor() {
 
   const updateEl = (patch) => setElements(els => els.map(el => selectedIds.includes(el.id) ? { ...el, ...patch } : el));
 
-  const handleGroupDragStart = useCallback((e) => {
+  const handleGroupDragStart = useCallback((e, measuredBbox) => {
     e.stopPropagation(); e.preventDefault();
     // Snapshot positions of all selected elements at drag start
     const sel = (elementsRef.current ?? []).filter(el => selectedIds.includes(el.id));
     const startPositions = sel.map(el => ({ id: el.id, x: el.x, y: el.y }));
     if (!sel.length) return;
 
-    // Compute the selection's bounding box (in canvas-internal coords) so we
-    // can snap the whole group's edges/centre to the canvas + other elements.
-    let groupMinX = Infinity, groupMinY = Infinity, groupMaxX = -Infinity, groupMaxY = -Infinity;
-    sel.forEach(el => {
-      const w = el.width || 100, h = el.height || el.fontSize || 20;
-      groupMinX = Math.min(groupMinX, el.x);
-      groupMinY = Math.min(groupMinY, el.y);
-      groupMaxX = Math.max(groupMaxX, el.x + w);
-      groupMaxY = Math.max(groupMaxY, el.y + h);
-    });
-    const groupW = groupMaxX - groupMinX;
-    const groupH = groupMaxY - groupMinY;
+    // Use the DOM-measured bbox passed from GroupBoundingBox when available —
+    // it reflects the actual rendered text width rather than the wider container
+    // box (el.width), giving accurate centre/edge snap alignment.
+    let groupMinX, groupMinY, groupW, groupH;
+    if (measuredBbox) {
+      groupMinX = measuredBbox.minX;
+      groupMinY = measuredBbox.minY;
+      groupW    = measuredBbox.w;
+      groupH    = measuredBbox.h;
+    } else {
+      // Fallback: compute from element data
+      let gMaxX = -Infinity, gMaxY = -Infinity;
+      groupMinX = Infinity; groupMinY = Infinity;
+      sel.forEach(el => {
+        const w = el.width || 100, h = el.height || el.fontSize || 20;
+        groupMinX = Math.min(groupMinX, el.x);
+        groupMinY = Math.min(groupMinY, el.y);
+        gMaxX = Math.max(gMaxX, el.x + w);
+        gMaxY = Math.max(gMaxY, el.y + h);
+      });
+      groupW = gMaxX - groupMinX;
+      groupH = gMaxY - groupMinY;
+    }
 
     const startMx = e.clientX, startMy = e.clientY;
     const selIds = selectedIds.slice();
@@ -1444,8 +1576,9 @@ export default function LinenSignEditor() {
                       const minY = Math.min(...textEls.map(el => el.y));
                       const maxY = Math.max(...textEls.map(el => el.y + (el.fontSize || 20) * (el.lineHeight || 1.2)));
                       const contentH = maxY - minY;
-                      const allW = textEls.map(el => (el.x || 0) + (el.width || 340));
-                      const contentW = Math.max(...allW);
+                      const minX = Math.max(0, Math.min(...textEls.map(el => el.x)));
+                      const maxX = Math.max(...textEls.map(el => Math.max(el.x, 0) + (el.width || 340)));
+                      const contentW = maxX - minX;
                       const scale = Math.min(110 / contentW, 110 / contentH, 0.35);
                       return (
                         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1453,7 +1586,7 @@ export default function LinenSignEditor() {
                             {textEls.map((el) => (
                               <div key={el.id} style={{
                                 position:"absolute",
-                                left:el.x,
+                                left:el.x - minX,
                                 top:el.y - minY,
                                 fontFamily:(getAllFonts().find(f=>f.id===el.fontId)||FONTS[0]).family,
                                 fontSize:el.fontSize,
@@ -1550,6 +1683,25 @@ export default function LinenSignEditor() {
               </button>
             ))}
           </div>
+          {/* Duplicate & Delete — only shown when something is selected */}
+          {selectedIds.length > 0 && (
+            <div style={{display:"flex",gap:4,marginLeft:4}}>
+              <button onClick={duplicateSelected} title="Duplicate"
+                style={{padding:"5px 10px",fontSize:10,letterSpacing:1,
+                  border:"1px solid rgba(180,165,150,0.3)",borderRadius:6,
+                  background:"transparent",cursor:"pointer",
+                  color:"#6B5E52",fontFamily:"Georgia,serif"}}>
+                ⧉ Duplicate
+              </button>
+              <button onClick={deleteSelected} title="Delete"
+                style={{padding:"5px 10px",fontSize:10,letterSpacing:1,
+                  border:"1px solid rgba(180,80,80,0.3)",borderRadius:6,
+                  background:"transparent",cursor:"pointer",
+                  color:"#C07070",fontFamily:"Georgia,serif"}}>
+                ✕ Delete
+              </button>
+            </div>
+          )}
           {/* Zoom controls */}
           <div style={{display:"flex",alignItems:"center",gap:2,marginLeft:8,
             border:"1px solid rgba(180,165,150,0.3)",borderRadius:6,padding:2}}>
@@ -1570,6 +1722,24 @@ export default function LinenSignEditor() {
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {urlParams.dev && (
+            <button
+              onClick={() => {
+                const json = JSON.stringify(displayElements, null, 2);
+                navigator.clipboard.writeText(json).then(() => {
+                  alert("Template JSON copied to clipboard!\n\nPaste it into your chat with Claude to update the template.");
+                }).catch(() => {
+                  // Fallback: open in a new tab as a data URI
+                  const win = window.open();
+                  win.document.write("<pre style='font-size:12px;padding:16px'>" + json.replace(/</g,"&lt;") + "</pre>");
+                });
+              }}
+              style={{padding:"9px 14px",fontSize:11,letterSpacing:1,
+                background:"rgba(74,103,65,0.12)",border:"1px solid rgba(74,103,65,0.5)",
+                borderRadius:6,cursor:"pointer",color:"#4A6741",fontFamily:"Georgia,serif"}}>
+              📋 Copy Template JSON
+            </button>
+          )}
           <button onClick={() => setShowSaveModal(true)}
             style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",
               background:savedPulse?"rgba(74,103,65,0.15)":"rgba(255,255,255,0.7)",
@@ -1641,8 +1811,6 @@ export default function LinenSignEditor() {
             { icon:"T",  sublabel:"Add Text",     action:addText,                                          active:false },
             { icon:"✾",  sublabel:"Illustrations",action:() => { setShowLibrary(l => !l); setSelectedId(null); }, active:showLibrary },
             { icon:"🖼", sublabel:"Upload Image",  action:() => fileRef.current?.click(),                  active:false },
-            { icon:"⧉",  sublabel:"Duplicate",    action:duplicateSelected, disabled:!selectedIds.length },
-            { icon:"✕",  sublabel:"Delete",       action:deleteSelected,    disabled:!selectedIds.length },
           ].map(btn => (
             <div key={btn.sublabel} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,marginBottom:6}}>
               <button onClick={btn.action} title={btn.sublabel} disabled={btn.disabled}
@@ -1679,9 +1847,62 @@ export default function LinenSignEditor() {
             <div
               style={{position:"absolute",inset:0,transform:`scale(${fit})`,transformOrigin:"top left",width:cw,height:ch,
                 cursor:marquee?"crosshair":"default"}}
+              onMouseDownCapture={e => {
+                // ── Geometric hit-testing (capture phase) ─────────────────────
+                // CSS pointer-events can mis-target overlapping script-font glyphs
+                // because the CSS layout box ≠ visual ink bounds. We use
+                // getBoundingClientRect on each element's data-bbox-id node to
+                // find the topmost element that geometrically contains the click,
+                // then redirect the event if CSS would have targeted the wrong one.
+                if (ignoreNextCapture.current) { ignoreNextCapture.current = false; return; }
+                if (e.button !== 0) return;
+                // Don't intercept clicks inside an active contentEditable (text selection)
+                if (e.target?.isContentEditable || e.target?.closest?.('[contenteditable]')) return;
+
+                const cx = e.clientX, cy = e.clientY;
+                const currentEls = elementsRef.current ?? [];
+
+                // Walk in reverse DOM order (last = highest z) to find topmost hit
+                let geomHitId = null;
+                for (let i = currentEls.length - 1; i >= 0; i--) {
+                  const el = currentEls[i];
+                  if (el.hidden) continue;
+                  const node = document.querySelector(`[data-bbox-id="${el.id}"]`);
+                  if (!node) continue;
+                  const r = node.getBoundingClientRect();
+                  if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+                    geomHitId = el.id;
+                    break;
+                  }
+                }
+
+                // What CSS naturally targeted via pointer-events
+                const cssNode  = e.target?.closest?.('[data-bbox-id]');
+                const cssHitId = cssNode?.dataset?.bboxId ?? null;
+
+                if (geomHitId !== null && cssHitId !== null && geomHitId !== cssHitId) {
+                  // Geometric test found a specific element CSS missed/got wrong.
+                  // Stop the event and re-fire it on the correct node so that
+                  // element's onMouseDown (selection + drag) runs instead.
+                  e.stopPropagation();
+                  ignoreNextCapture.current = true;
+                  const correctNode = document.querySelector(`[data-bbox-id="${geomHitId}"]`);
+                  correctNode?.dispatchEvent(new MouseEvent("mousedown", {
+                    bubbles: true, cancelable: true, view: window,
+                    clientX: e.clientX, clientY: e.clientY,
+                    shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey,
+                    button: e.button, buttons: e.buttons,
+                  }));
+                }
+                // geomHitId === cssHitId → CSS was right, proceed normally.
+                // geomHitId === null    → background click, proceed normally
+                //   (existing onMouseDown starts marquee selection).
+              }}
               onMouseDown={e => {
                 // Only start marquee on the background — elements call e.stopPropagation()
                 if (e.button !== 0) return;
+                // Don't deselect while a text element is being edited
+                if (document.activeElement?.isContentEditable) return;
                 setSelectedIds([]);
                 const rect = canvasRef.current.getBoundingClientRect();
                 const startX = (e.clientX - rect.left) / fit;
@@ -1764,7 +1985,9 @@ export default function LinenSignEditor() {
                   onSnap={handleSnap}
                   onSnapEnd={handleSnapEnd}
                   onCommit={commitStaged}
-                  scale={scale}/>
+                  scale={scale}
+                  onEditStart={(id) => setEditingId(id)}
+                  onEditEnd={() => setEditingId(null)}/>
               ))}
             </div>
           </div>
@@ -1905,22 +2128,6 @@ export default function LinenSignEditor() {
                 {{ text:"TEXT PROPERTIES", divider:"DIVIDER", image:"PHOTO", illustration:"ILLUSTRATION" }[selectedEl.type]}
               </div>
 
-              {/* Duplicate + Delete */}
-              <div style={{display:"flex",gap:8,marginBottom:16}}>
-                <button onClick={duplicateSelected}
-                  style={{flex:1,padding:"7px 0",fontSize:10,letterSpacing:1,
-                    border:"1px solid rgba(138,123,108,0.35)",borderRadius:6,background:"transparent",
-                    cursor:"pointer",color:"#6B5E52",fontFamily:"Georgia,serif"}}>
-                  ⧉ Duplicate
-                </button>
-                <button onClick={deleteSelected}
-                  style={{flex:1,padding:"7px 0",fontSize:10,letterSpacing:1,
-                    border:"1px solid rgba(180,80,80,0.3)",borderRadius:6,background:"transparent",
-                    cursor:"pointer",color:"#C07070",fontFamily:"Georgia,serif"}}>
-                  ✕ Remove
-                </button>
-              </div>
-
               {/* Rotation */}
               {selectedEl.type !== "divider" && (
                 <SliderRow label="ROTATION" value={selectedEl.rotation||0} min={-180} max={180}
@@ -1959,10 +2166,58 @@ export default function LinenSignEditor() {
 
                   <SliderRow label="SIZE" value={selectedEl.fontSize} min={6} max={200}
                     onChange={v => updateEl({fontSize:v})}/>
-                  <SliderRow label="LINE HEIGHT" value={selectedEl.lineHeight||1.35} min={0.8} max={3} step={0.05}
+                  <SliderRow label="LINE HEIGHT" value={selectedEl.lineHeight||1.35} min={0.4} max={3} step={0.05}
                     format={v => v.toFixed(2)} onChange={v => updateEl({lineHeight:v})}/>
                   <SliderRow label="LETTER SPACING" value={selectedEl.letterSpacing||0} min={0} max={12}
                     onChange={v => updateEl({letterSpacing:v})}/>
+
+                  {/* OpenType features — whole-element toggles */}
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:4}}>SWASHES &amp; LIGATURES</div>
+                    <div style={{fontSize:9,color:"#8A7B6C",marginBottom:8,lineHeight:1.5,
+                      background:"rgba(138,123,108,0.08)",padding:"5px 8px",borderRadius:6}}>
+                      Double-click the text and highlight a letter to swap individual glyphs. Toggles below apply to the whole element.
+                    </div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {[
+                        { tag:"init", label:"Initial Swash" },
+                        { tag:"fina", label:"Final Swash"   },
+                        { tag:"dlig", label:"Ligatures"     },
+                        { tag:"salt", label:"Alternates"    },
+                        { tag:"calt", label:"Contextual"    },
+                        { tag:"ss01", label:"Style Set 1"   },
+                        { tag:"ss02", label:"Style Set 2"   },
+                        { tag:"ss03", label:"Style Set 3"   },
+                        { tag:"ss04", label:"Style Set 4"   },
+                        { tag:"ss05", label:"Style Set 5"   },
+                        { tag:"ss06", label:"Style Set 6"   },
+                        { tag:"ss07", label:"Style Set 7"   },
+                        { tag:"ss08", label:"Style Set 8"   },
+                        { tag:"ss09", label:"Style Set 9"   },
+                        { tag:"ss10", label:"Style Set 10"  },
+                        { tag:"ss11", label:"Style Set 11"  },
+                        { tag:"ss12", label:"Style Set 12"  },
+                      ].map(({ tag, label }) => {
+                        const active = (selectedEl.openType||[]).includes(tag);
+                        return (
+                          <button key={tag} onClick={() => {
+                            const cur = selectedEl.openType || [];
+                            updateEl({ openType: active ? cur.filter(f => f !== tag) : [...cur, tag] });
+                          }}
+                          style={{
+                            padding:"5px 10px", fontSize:10, letterSpacing:0.5,
+                            border: active ? "1px solid rgba(138,123,108,0.8)" : "1px solid rgba(180,165,150,0.4)",
+                            borderRadius:20, cursor:"pointer", fontFamily:"Georgia,serif",
+                            background: active ? "rgba(138,123,108,0.15)" : "transparent",
+                            color: active ? "#3A3028" : "#9A8F85",
+                            transition:"all 0.15s",
+                          }}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
                   {/* Stroke */}
                   <div style={{marginBottom:16}}>
@@ -2059,6 +2314,65 @@ export default function LinenSignEditor() {
         </div>
 
         {showLibrary && <IllustrationLibrary onAdd={addIllustration} onClose={() => setShowLibrary(false)}/>}
+
+        {/* ── Glyph alternate picker ──────────────────────────────────────── */}
+        {glyphPicker && editingId && (() => {
+          const editEl = displayElements.find(e => e.id === editingId);
+          const font = getAllFonts().find(f => f.id === editEl?.fontId) || FONTS[0];
+          // Use auto-detected feature list; undefined = still probing, don't show yet
+          const supportedTags = _fontFeatureCache[font.id];
+          if (!supportedTags || supportedTags.length === 0) return null;
+          const OT_FEATURES = ALL_OT_FEATURES.filter(f => supportedTags.includes(f.tag));
+          if (OT_FEATURES.length === 0) return null;
+          const popupW = 280;
+          const left = Math.min(Math.max(8, glyphPicker.x - 12), window.innerWidth - popupW - 8);
+          const top  = glyphPicker.y + 10;
+          return (
+            <div
+              onMouseDown={e => e.preventDefault()} // keep focus in contentEditable
+              style={{
+                position:"fixed", left, top, zIndex:3000, width:popupW,
+                background:"rgba(252,249,245,0.98)",
+                border:"1px solid rgba(180,165,150,0.45)",
+                borderRadius:10, padding:12,
+                boxShadow:"0 12px 40px rgba(0,0,0,0.18)",
+                fontFamily:"Georgia,serif",
+              }}>
+              <div style={{fontSize:9,letterSpacing:2,color:"#9A8F85",marginBottom:10}}>
+                ALTERNATES FOR &ldquo;{glyphPicker.text}&rdquo;
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                {/* Original */}
+                <button onClick={() => applyGlyphFeature(null)} title="Original"
+                  style={{width:44,height:44,borderRadius:7,cursor:"pointer",
+                    border:"2px solid rgba(138,123,108,0.7)",
+                    background:"rgba(138,123,108,0.1)",
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:28,fontFamily:font.family,color:"#1A1610",
+                    flexShrink:0,
+                  }}>
+                  {glyphPicker.text}
+                </button>
+                {OT_FEATURES.map(({ tag, tip }) => (
+                  <button key={tag} onClick={() => applyGlyphFeature(tag)} title={tip}
+                    style={{width:44,height:44,borderRadius:7,cursor:"pointer",
+                      border:"1px solid rgba(180,165,150,0.35)",
+                      background:"#fff",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize:28,fontFamily:font.family,color:"#1A1610",
+                      fontFeatureSettings:`"${tag}" 1`,
+                      flexShrink:0,
+                    }}>
+                    {glyphPicker.text}
+                  </button>
+                ))}
+              </div>
+              <div style={{fontSize:9,color:"#B0A496",marginTop:9,lineHeight:1.5}}>
+                Tap any alternate to replace your selection · first box = original
+              </div>
+            </div>
+          );
+        })()}
 
         {contextMenu && (
           <>
