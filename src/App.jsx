@@ -58,8 +58,9 @@ function _parseGSUBTags(buf) {
       if (tag === "GSUB") { gsubOff = v.getUint32(b + 8); break; }
     }
     if (gsubOff < 0) return [];
-    // GSUB 1.0 layout: majorVersion(2) minorVersion(2) scriptListOffset(2) featureListOffset(2)
-    const featListOff = gsubOff + v.getUint16(gsubOff + 4);
+    // GSUB header: majorVersion(2) minorVersion(2) scriptListOffset(2) featureListOffset(2) …
+    // featureListOffset is at +6, NOT +4 (that's scriptListOffset)
+    const featListOff = gsubOff + v.getUint16(gsubOff + 6);
     const featCount   = v.getUint16(featListOff);
     const tags = new Set();
     for (let i = 0; i < featCount; i++) {
@@ -563,7 +564,7 @@ function TextScaleHandle({ el, onChange, onCommit, scale }) {
 }
 
 // ─── Canvas element ───────────────────────────────────────────────────────────
-function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, onContextMenu, scale, onEditStart, onEditEnd }) {
+function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, onChange, onSnap, onSnapEnd, onCommit, onMultiDragStart, onContextMenu, scale, onEditStart, onEditEnd, onEditSelect }) {
   const handleContextMenu = (e) => {
     if (!onContextMenu) return;
     e.preventDefault(); e.stopPropagation();
@@ -594,6 +595,22 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
       sel?.addRange(range);
     }
   }, [editing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Called on mouseup/keyup inside the contenteditable — reports current selection
+  // to the parent so it can show the glyph picker.  Runs AFTER the browser has
+  // settled the selection, avoiding the selectionchange-on-picker-click race.
+  const reportEditSelection = () => {
+    if (!textRef.current) return;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.rangeCount > 0 && textRef.current.contains(sel.anchorNode)) {
+      try {
+        const rect = sel.getRangeAt(0).getBoundingClientRect();
+        const text = sel.toString().trim();
+        if (text) { onEditSelect?.({ x: rect.left, y: rect.bottom, text }); return; }
+      } catch { /* ignored */ }
+    }
+    onEditSelect?.(null);
+  };
 
   const handleMouseDown = (e) => {
     if (editing) return;
@@ -756,8 +773,10 @@ function CanvasElement({ el, selected, multiSelect, onSelect, onAddToSelection, 
           // Uncontrolled: don't pass content as children while editing —
           // let browser own the DOM. Only sync back on blur.
           dangerouslySetInnerHTML={editing ? undefined : { __html: el.content.includes("<") ? el.content : el.content.replace(/\n/g,"<br/>") }}
-          onBlur={e => { onChange({ content: e.currentTarget.innerHTML }); setEditing(false); onEditEnd?.(); onCommit(); }}
+          onBlur={e => { onChange({ content: e.currentTarget.innerHTML }); setEditing(false); onEditEnd?.(); onEditSelect?.(null); onCommit(); }}
           onKeyDown={handleContentKeyDown}
+          onKeyUp={reportEditSelection}
+          onMouseUp={reportEditSelection}
           onClick={e => e.stopPropagation()}
           style={{
             ...textStyle,
@@ -1184,23 +1203,10 @@ export default function LinenSignEditor() {
     return () => window.removeEventListener("keydown", onKey);
   }, [stage, selectedId, undo, redo, setElements]);
 
-  // ── Glyph picker — show alternate forms when text is selected in edit mode ───
-  useEffect(() => {
-    if (!editingId) { setGlyphPicker(null); return; }
-    const onSelChange = () => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) { setGlyphPicker(null); return; }
-      const range = sel.getRangeAt(0);
-      const textEl = document.querySelector(`[data-bbox-id="${editingId}"] [contenteditable]`);
-      if (!textEl?.contains(range.commonAncestorContainer)) { setGlyphPicker(null); return; }
-      const text = sel.toString();
-      if (!text.trim()) { setGlyphPicker(null); return; }
-      const rect = range.getBoundingClientRect();
-      setGlyphPicker({ x: rect.left, y: rect.bottom, text });
-    };
-    document.addEventListener("selectionchange", onSelChange);
-    return () => { document.removeEventListener("selectionchange", onSelChange); setGlyphPicker(null); };
-  }, [editingId]);
+  // glyphPicker is now driven by onEditSelect callbacks from CanvasElement
+  // (mouseup/keyup inside the contenteditable), rather than a document-level
+  // selectionchange listener.  This avoids the race where mousedown on a picker
+  // button collapses the selection before the click event fires.
 
   const applyGlyphFeature = useCallback((tag) => {
     const sel = window.getSelection();
@@ -1987,7 +1993,8 @@ export default function LinenSignEditor() {
                   onCommit={commitStaged}
                   scale={scale}
                   onEditStart={(id) => setEditingId(id)}
-                  onEditEnd={() => setEditingId(null)}/>
+                  onEditEnd={() => { setEditingId(null); setGlyphPicker(null); }}
+                  onEditSelect={(data) => setGlyphPicker(data)}/>
               ))}
             </div>
           </div>
@@ -2319,11 +2326,15 @@ export default function LinenSignEditor() {
         {glyphPicker && editingId && (() => {
           const editEl = displayElements.find(e => e.id === editingId);
           const font = getAllFonts().find(f => f.id === editEl?.fontId) || FONTS[0];
-          // Use auto-detected feature list; undefined = still probing, don't show yet
+          // _fontFeatureCache[id] is:
+          //   undefined → probing still in flight (or Google font, never probed) → show all features
+          //   []        → probed, font has no OT alternates → hide picker
+          //   [tags]    → probed with results → filter to those tags
           const supportedTags = _fontFeatureCache[font.id];
-          if (!supportedTags || supportedTags.length === 0) return null;
-          const OT_FEATURES = ALL_OT_FEATURES.filter(f => supportedTags.includes(f.tag));
-          if (OT_FEATURES.length === 0) return null;
+          if (Array.isArray(supportedTags) && supportedTags.length === 0) return null;
+          const OT_FEATURES = Array.isArray(supportedTags)
+            ? ALL_OT_FEATURES.filter(f => supportedTags.includes(f.tag))
+            : ALL_OT_FEATURES; // fallback: show all while probing is pending
           const popupW = 280;
           const left = Math.min(Math.max(8, glyphPicker.x - 12), window.innerWidth - popupW - 8);
           const top  = glyphPicker.y + 10;
@@ -2343,7 +2354,7 @@ export default function LinenSignEditor() {
               </div>
               <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                 {/* Original */}
-                <button onClick={() => applyGlyphFeature(null)} title="Original"
+                <button onMouseDown={e => e.preventDefault()} onClick={() => applyGlyphFeature(null)} title="Original"
                   style={{width:44,height:44,borderRadius:7,cursor:"pointer",
                     border:"2px solid rgba(138,123,108,0.7)",
                     background:"rgba(138,123,108,0.1)",
@@ -2354,7 +2365,7 @@ export default function LinenSignEditor() {
                   {glyphPicker.text}
                 </button>
                 {OT_FEATURES.map(({ tag, tip }) => (
-                  <button key={tag} onClick={() => applyGlyphFeature(tag)} title={tip}
+                  <button key={tag} onMouseDown={e => e.preventDefault()} onClick={() => applyGlyphFeature(tag)} title={tip}
                     style={{width:44,height:44,borderRadius:7,cursor:"pointer",
                       border:"1px solid rgba(180,165,150,0.35)",
                       background:"#fff",
