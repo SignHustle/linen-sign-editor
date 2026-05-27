@@ -344,8 +344,17 @@ const TEMPLATES = [
   ]},
 ];
 
-// ─── Default colour palette ───────────────────────────────────────────────────
-const DEFAULT_PALETTE = ["#3A3028","#6B5E52","#9A8F85","#F5F0E8","#4A6741","#8AAFC0","#C4714A","#C9A84C"];
+// ─── Default colour palette (nested — each row is one curated palette) ────────
+const DEFAULT_PALETTE = [
+  // On Ice — brown & blue
+  ["#4E3324","#9EC3D6","#6E8FA3","#E6D6C6","#9C8B7A","#F2F2EE"],
+  // Café Collection — nude
+  ["#CFB3A9","#F1EEEB","#CDC6C3","#A09086","#E4D8CB"],
+  // Matcha Aesthetic — dusty & earthy
+  ["#DDD3C9","#ECC4C3","#B97D7B","#928E5E","#575527"],
+  // Studio Vaia — warm & moody
+  ["#C4BAB3","#741717","#8D695D","#603A30","#52130C"],
+];
 
 // ─── Linen texture ────────────────────────────────────────────────────────────
 function LinenTexture({ opacity=0.18, uid="linen" }) {
@@ -431,12 +440,16 @@ function ColourPicker({ value, onChange, palette, onAddToPalette }) {
   return (
     <div style={{marginBottom:18}}>
       <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:8}}>COLOUR</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:10}}>
-        {palette.map((hex, i) => (
-          <button key={i} onClick={() => { onChange(hex); setDraft(hex); }} title={hex}
-            style={{width:26,height:26,borderRadius:"50%",border:"none",background:hex,cursor:"pointer",flexShrink:0,
-              boxShadow:value===hex?"0 0 0 2px #fff,0 0 0 3.5px #8A7B6C":"0 1px 4px rgba(0,0,0,0.18)",
-              transform:value===hex?"scale(1.15)":"scale(1)",transition:"all 0.15s"}}/>
+      <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10}}>
+        {palette.map((row, ri) => (
+          <div key={ri} style={{display:"flex",gap:7}}>
+            {row.map((hex, i) => (
+              <button key={i} onClick={() => { onChange(hex); setDraft(hex); }} title={hex}
+                style={{width:26,height:26,borderRadius:"50%",border:"none",background:hex,cursor:"pointer",flexShrink:0,
+                  boxShadow:value===hex?"0 0 0 2px #fff,0 0 0 3.5px #8A7B6C":"0 1px 4px rgba(0,0,0,0.18)",
+                  transform:value===hex?"scale(1.15)":"scale(1)",transition:"all 0.15s"}}/>
+            ))}
+          </div>
         ))}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1416,7 +1429,14 @@ export default function LinenSignEditor() {
 
   const addToPalette = (hex) => {
     if (!hex || !/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
-    setPalette(p => p.includes(hex) ? p : [...p, hex]);
+    setPalette(rows => {
+      const flat = rows.flat();
+      if (flat.includes(hex)) return rows;
+      // Append to last row (user's custom additions)
+      const next = rows.map(r => [...r]);
+      next[next.length - 1] = [...next[next.length - 1], hex];
+      return next;
+    });
   };
 
   const updateEl = (patch) => setElements(els => els.map(el => selectedIds.includes(el.id) ? { ...el, ...patch } : el));
@@ -1846,7 +1866,7 @@ export default function LinenSignEditor() {
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px 24px",overflow:"auto"}}>
           <div ref={canvasRef}
             data-canvas-root
-            style={{width:dispW,height:dispH,position:"relative",overflow:"hidden",
+            style={{width:dispW,height:dispH,position:"relative",overflow:"visible",
               background:bgColour,
               boxShadow:"0 8px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
               borderRadius:4,flexShrink:0}}>
@@ -2015,7 +2035,11 @@ export default function LinenSignEditor() {
                 const isSelected = selectedIds.includes(el.id);
                 const labelText = (() => {
                   if (el.type === "text") {
-                    const t = (el.content || "").replace(/\s+/g, " ").trim();
+                    // Strip HTML tags (span feature wrappers, <br>, &nbsp; etc.) before truncating
+                    const t = (el.content || "")
+                      .replace(/<[^>]*>/g, "")
+                      .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+                      .replace(/\s+/g, " ").trim();
                     return t.length > 22 ? t.slice(0, 22) + "…" : (t || "Text");
                   }
                   if (el.type === "illustration") return "✾ " + (el.illustrationId || "Illustration");
@@ -2104,13 +2128,17 @@ export default function LinenSignEditor() {
               </div>
               <div style={{borderTop:"1px solid rgba(180,165,150,0.2)",paddingTop:20}}>
                 <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:12}}>BACKGROUND COLOUR</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:12}}>
-                  {palette.map((hex, i) => (
-                    <button key={i} onClick={() => setBgColour(hex)} title={hex}
-                      style={{width:26,height:26,borderRadius:"50%",border:"1px solid rgba(0,0,0,0.1)",
-                        background:hex,cursor:"pointer",flexShrink:0,
-                        boxShadow:bgColour===hex?"0 0 0 2px #fff,0 0 0 3.5px #8A7B6C":"0 1px 4px rgba(0,0,0,0.12)",
-                        transform:bgColour===hex?"scale(1.15)":"scale(1)",transition:"all 0.15s"}}/>
+                <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:12}}>
+                  {palette.map((row, ri) => (
+                    <div key={ri} style={{display:"flex",gap:7}}>
+                      {row.map((hex, i) => (
+                        <button key={i} onClick={() => setBgColour(hex)} title={hex}
+                          style={{width:26,height:26,borderRadius:"50%",border:"1px solid rgba(0,0,0,0.1)",
+                            background:hex,cursor:"pointer",flexShrink:0,
+                            boxShadow:bgColour===hex?"0 0 0 2px #fff,0 0 0 3.5px #8A7B6C":"0 1px 4px rgba(0,0,0,0.12)",
+                            transform:bgColour===hex?"scale(1.15)":"scale(1)",transition:"all 0.15s"}}/>
+                      ))}
+                    </div>
                   ))}
                 </div>
                 <BgColourPicker value={bgColour} onChange={setBgColour} onSaveToPalette={addToPalette}/>
@@ -2237,12 +2265,16 @@ export default function LinenSignEditor() {
                     {(selectedEl.strokeWidth||0) > 0 && (
                       <div>
                         <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:6}}>STROKE COLOUR</div>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:6}}>
-                          {palette.map((hex, i) => (
-                            <button key={i} onClick={() => updateEl({strokeColor:hex})} title={hex}
-                              style={{width:22,height:22,borderRadius:"50%",border:"none",background:hex,cursor:"pointer",flexShrink:0,
-                                boxShadow:(selectedEl.strokeColor||selectedEl.color)===hex?"0 0 0 2px #fff,0 0 0 3.5px #8A7B6C":"0 1px 4px rgba(0,0,0,0.15)",
-                                transform:(selectedEl.strokeColor||selectedEl.color)===hex?"scale(1.15)":"scale(1)",transition:"all 0.15s"}}/>
+                        <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:6}}>
+                          {palette.map((row, ri) => (
+                            <div key={ri} style={{display:"flex",gap:7}}>
+                              {row.map((hex, i) => (
+                                <button key={i} onClick={() => updateEl({strokeColor:hex})} title={hex}
+                                  style={{width:22,height:22,borderRadius:"50%",border:"none",background:hex,cursor:"pointer",flexShrink:0,
+                                    boxShadow:(selectedEl.strokeColor||selectedEl.color)===hex?"0 0 0 2px #fff,0 0 0 3.5px #8A7B6C":"0 1px 4px rgba(0,0,0,0.15)",
+                                    transform:(selectedEl.strokeColor||selectedEl.color)===hex?"scale(1.15)":"scale(1)",transition:"all 0.15s"}}/>
+                              ))}
+                            </div>
                           ))}
                           <label style={{width:22,height:22,borderRadius:"50%",border:"1px dashed rgba(138,123,108,0.5)",
                             cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#9A8F85",flexShrink:0}}>
