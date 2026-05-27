@@ -2115,6 +2115,39 @@ export default function LinenSignEditor() {
                   cursor:"pointer",color:"#9A8F85",fontFamily:"Georgia,serif"}}>
                 Deselect All
               </button>
+
+              {/* Colour — only shown when the selection contains text elements */}
+              {displayElements.some(e => selectedIds.includes(e.id) && e.type === "text") && (
+                <div style={{marginTop:20,borderTop:"1px solid rgba(180,165,150,0.2)",paddingTop:16}}>
+                  <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:10}}>TEXT COLOUR</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10}}>
+                    {palette.map((row, ri) => (
+                      <div key={ri} style={{display:"flex",gap:7}}>
+                        {row.map((hex, i) => (
+                          <button key={i} title={hex}
+                            onClick={() => updateEl({ color: hex })}
+                            style={{width:26,height:26,borderRadius:"50%",border:"none",background:hex,
+                              cursor:"pointer",flexShrink:0,
+                              boxShadow:"0 1px 4px rgba(0,0,0,0.18)",transition:"transform 0.15s"}}
+                            onMouseEnter={e => e.currentTarget.style.transform="scale(1.2)"}
+                            onMouseLeave={e => e.currentTarget.style.transform="scale(1)"}/>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Custom colour */}
+                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                    <div style={{width:26,height:26,borderRadius:"50%",border:"1px dashed rgba(138,123,108,0.5)",
+                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:"#9A8F85",flexShrink:0,position:"relative"}}>
+                      +
+                      <input type="color" defaultValue="#3A3028"
+                        onChange={e => updateEl({ color: e.target.value })}
+                        style={{opacity:0,position:"absolute",inset:0,width:"100%",height:"100%",cursor:"pointer"}}/>
+                    </div>
+                    <span style={{fontSize:10,color:"#9A8F85",letterSpacing:1}}>CUSTOM</span>
+                  </label>
+                </div>
+              )}
             </div>
           ) : !selectedEl ? (
             <>
