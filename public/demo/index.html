@@ -145,6 +145,13 @@ h1.big em{font-weight:300}
 .svp.land .paper{width:344px;aspect-ratio:229/162}
 .svp.port .paper{width:232px}
 .svp .paper iframe{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;pointer-events:none}
+/* Liner shown inserted in the open envelope: liner artwork in the flap
+   area, envelope-colour pocket over the lower half */
+.svp .paper.linerenv iframe{left:6%;top:2.5%;width:88%;height:95%}
+.pocket{position:absolute;left:0;right:0;bottom:0;height:47%;
+  box-shadow:0 -10px 24px rgba(40,30,20,.20);
+  background-image:linear-gradient(112deg,rgba(255,255,255,.10),rgba(0,0,0,.05) 46%,rgba(0,0,0,0) 60%),
+                   linear-gradient(248deg,rgba(255,255,255,.08),rgba(0,0,0,.04) 46%,rgba(0,0,0,0) 60%)}
 .svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#4A3A30;display:block;margin-top:14px}
 .svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#77685C}
 
@@ -705,19 +712,27 @@ function renderSuiteView(){
   $("suiteview").innerHTML =
     '<div class="svhead">Your suite · double-click a piece to edit it</div><div class="svgrid">' +
     pieceList().map(p => {
+      // Liner renders inserted into the open envelope: envelope-colour card,
+      // liner artwork through the flap, pocket over the lower half.
+      if (p.key==="liner") {
+        return '<div class="svp port" ondblclick="setPiece(\'liner\')" title="Double-click to edit">'
+          + '<div class="paper linerenv" style="aspect-ratio:229/300;width:252px;background:'+hex+'">'
+          + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+hex.slice(1)+'" title="Liner"></iframe>'
+          + '<div class="pocket" style="background-color:'+hex+'"></div>'
+          + '</div><b>'+p.label+'</b><span>'+p.id+' · '+S.envColour+' · '+flapLabel()+'</span></div>';
+      }
       const isEnv = p.key==="envFront" || p.key==="envBack";
-      const land  = isEnv || p.key==="liner";
       const bg    = isEnv ? "&bg="+hex.slice(1) : "";
       // Details/RSVP are A6: landscape for Options 1 & 3, portrait for Option 2.
       const isA6  = p.key==="details" || p.key==="rsvp";
-      const style = land ? '' :
+      const style = isEnv ? '' :
         isA6 ? (S.design==="o2" ? ' style="aspect-ratio:105/148;width:180px"' : ' style="aspect-ratio:148/105;width:280px"')
              : ' style="aspect-ratio:'+sizeAR[S.size]+'"';
-      return '<div class="svp '+(land?'land':'port')+'" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
+      return '<div class="svp '+(isEnv?'land':'port')+'" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
         + '<div class="paper"'+style+'>'
         + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1'+bg+'" title="'+p.label+'"></iframe>'
         + '</div><b>'+p.label+'</b><span>'+p.id
-        + (land ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>';
+        + (isEnv ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>';
     }).join("") + '</div>';
 }
 function pickEnvColour(name){
