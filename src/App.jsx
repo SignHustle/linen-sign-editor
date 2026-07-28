@@ -4749,8 +4749,12 @@ export default function LinenSignEditor() {
   const isPreview = urlParams.preview;
   const maxH = typeof window !== "undefined" ? window.innerHeight - 120 : 700;
   const winW = typeof window !== "undefined" ? window.innerWidth : 800;
+  // Preview fills its window edge to edge (cover, not contain): the embedding
+  // page sizes the frame to the template's aspect, so designs print full bleed
+  // with at most a pixel or two clipped by rounding.
+  const winH = typeof window !== "undefined" ? window.innerHeight : 700;
   const baseFit = isPreview
-    ? Math.min((maxH + 110) / ch, (winW - 10) / cw)
+    ? Math.max(winH / ch, winW / cw)
     : Math.min(maxH / ch, 460 / cw, 1);
   const fit  = baseFit * zoom;
   fitRef.current = fit; // keep ref in sync so callbacks can read it
