@@ -38,16 +38,18 @@ hex_rgb = lambda h: np.array([int(h[i:i+2],16) for i in (1,3,5)], dtype=np.float
 slug = lambda n: re.sub(r'[^a-z0-9]+','-', n.lower()).strip('-')
 
 def recolour_rgba(rgba, target):
-    """Tint the paper to target, keeping shading detail. rgba float 0-255."""
+    """Tint the paper to target, keeping shading detail. rgba float 0-255.
+    RGB is replaced everywhere -- the alpha channel alone carries the
+    silhouette. Blending RGB by alpha leaves a fringe of the original
+    paper colour on the anti-aliased edge, so don't. Detail fades with
+    alpha so semi-transparent edge pixels are the flat target colour."""
     rgb, alpha = rgba[:,:,:3], rgba[:,:,3]/255.0
     lum = rgb @ np.array([0.299,0.587,0.114], dtype=np.float32)
     ys, xs = np.where(alpha > 0.95)
     paper = np.median(lum[ys, xs])
-    detail = np.clip(lum - paper, -80, 80)[..., None]
-    flat = np.clip(target[None,None,:] + detail*0.9, 0, 255)
+    detail = (np.clip(lum - paper, -80, 80) * alpha)[..., None]
     out = rgba.copy()
-    m = alpha[...,None]
-    out[:,:,:3] = rgb*(1-m) + flat*m
+    out[:,:,:3] = np.clip(target[None,None,:] + detail*0.9, 0, 255)
     return out
 
 def save_webp(rgba, path, w, q=85):
