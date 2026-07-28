@@ -4741,6 +4741,9 @@ export default function LinenSignEditor() {
       const hex = bgColour.replace("#","");
       const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
       const brightness = (r*299 + g*587 + b*114) / 1000; // 0-255
+      // Locked paper colour (coloured stock / envelope) or preview bg
+      // override: the background IS the paper — no fabric texture on it.
+      if (urlParams.lockbg || (urlParams.preview && urlParams.bg)) return 0;
       if (!showLinenTexture) return 0;    // user toggled off
       if (brightness > 220) return 0;    // near-white: no texture
       if (brightness > 200) return 0.08; // light: subtle texture
