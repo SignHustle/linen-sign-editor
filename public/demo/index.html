@@ -131,17 +131,22 @@ h1.big em{font-weight:300}
 .pt.sv{border-left:1px solid var(--line);border-radius:0 40px 40px 0;margin-left:2px}
 .pt.sv.on{border-radius:40px}
 
-/* Full suite overview */
-.suiteview{position:absolute;inset:24px 0 0 0;display:none;overflow-y:auto;background:var(--white);padding:34px 30px 90px}
+/* Full suite overview — flat-lay mock-up on textured paper */
+.suiteview{position:absolute;inset:24px 0 0 0;display:none;overflow-y:auto;
+  background:#ECE8E1 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.40 0 0 0 0 0.36 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
+  padding:46px 40px 110px}
 .suiteview.on{display:block}
-.svhead{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--plum-soft);text-align:center;margin-bottom:24px}
-.svgrid{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-width:960px;margin:0 auto}
-.svp{width:172px;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;cursor:pointer;transition:.15s;user-select:none}
-.svp:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(69,28,34,.12)}
-.svp .t{aspect-ratio:3/4;background:var(--cream-deep);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:9px}
-.svp .t img{width:100%;height:100%;object-fit:contain;padding:8px}
-.svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:var(--plum);display:block}
-.svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--plum-soft)}
+.svhead{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:#77685C;text-align:center;margin-bottom:34px}
+.svgrid{display:flex;flex-wrap:wrap;gap:48px 42px;justify-content:center;align-items:flex-start;max-width:1060px;margin:0 auto}
+.svp{cursor:pointer;user-select:none;text-align:center;transition:.18s}
+.svp:hover{transform:translateY(-4px)}
+.svp .paper{position:relative;background:#fff;overflow:hidden;
+  box-shadow:0 26px 54px rgba(45,35,25,.30), 0 8px 18px rgba(45,35,25,.14), 0 1px 3px rgba(45,35,25,.12)}
+.svp.land .paper{width:344px;aspect-ratio:229/162}
+.svp.port .paper{width:232px}
+.svp .paper iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+.svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#4A3A30;display:block;margin-top:14px}
+.svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#77685C}
 
 /* Envelope colour swatches */
 .envcol{display:none;margin:2px 0 14px;padding:0 4px}
@@ -686,17 +691,22 @@ function loadFrame(){
   $("specsub").textContent = DESIGNS[S.design].sub;
 }
 function renderSuiteView(){
+  // Real designs, straight from the editor in canvas-only preview mode.
+  // Envelope pieces pass the paper colour through so the canvas prints on it.
   const hex = cmykToHex(envColour().cmyk);
-  const tinted = { envFront:1, envBack:1, liner:1 };
+  const sizeAR = { a5:"148/210", "120x180":"120/180", "120x120":"1/1" };
   $("suiteview").innerHTML =
     '<div class="svhead">Your suite · double-click a piece to edit it</div><div class="svgrid">' +
-    pieceList().map(p =>
-      '<div class="svp" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
-      + '<div class="t"'+(tinted[p.key]?' style="background:'+hex+'"':'')+'>'
-      + '<img src="/borders/'+p.id+'-border.svg" alt="" onerror="thumbFallback(this,\''+p.id+'\',\''+p.label+'\')">'
-      + '</div><b>'+p.label+'</b><span>'+p.id
-      + (tinted[p.key] ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>').join("")
-    + '</div>';
+    pieceList().map(p => {
+      const isEnv = p.key==="envFront" || p.key==="envBack";
+      const land  = isEnv || p.key==="liner";
+      const bg    = isEnv ? "&bg="+hex.slice(1) : "";
+      return '<div class="svp '+(land?'land':'port')+'" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
+        + '<div class="paper"'+(land?'':' style="aspect-ratio:'+sizeAR[S.size]+'"')+'>'
+        + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1'+bg+'" title="'+p.label+'"></iframe>'
+        + '</div><b>'+p.label+'</b><span>'+p.id
+        + (land ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>';
+    }).join("") + '</div>';
 }
 function pickEnvColour(name){
   S.envColour = name;

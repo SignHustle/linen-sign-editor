@@ -266,6 +266,8 @@ function getUrlParams() {
       template:   p.get("template")   || null,
       group:      p.get("group")      || null,
       dev:        p.get("dev")        === "true",
+      preview:    p.get("preview")    === "1",
+      bg:         p.get("bg")         || null,
     };
   } catch { return { type: null, size: null, collection: null, variant: null, template: null, group: null }; }
 }
@@ -4063,6 +4065,13 @@ export default function LinenSignEditor() {
     setStage("editor");
   };
 
+  // Preview mode: the default body margin leaves a white ring around the
+  // canvas when the app is embedded small (suite mock-up iframes). Kill it.
+  useEffect(() => {
+    if (urlParams.preview) document.body.style.margin = "0";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Deep link: ?template=sw12 opens that design straight into the editor ───
   // Design-first entry. Ad and email links point at one design, not a gallery.
   // Falls back to normal browsing if the id is unknown.
@@ -4734,18 +4743,25 @@ export default function LinenSignEditor() {
   })();
 
   const { cw, ch } = canvasDims(template?.sizeKey);
+  // Preview mode (?preview=1): canvas only, scaled to fill the viewport,
+  // chrome hidden, no interaction. Used by the flow demo's suite mock-up
+  // and the future watermarked-preview feature.
+  const isPreview = urlParams.preview;
   const maxH = typeof window !== "undefined" ? window.innerHeight - 120 : 700;
-  const baseFit = Math.min(maxH / ch, 460 / cw, 1);
+  const winW = typeof window !== "undefined" ? window.innerWidth : 800;
+  const baseFit = isPreview
+    ? Math.min((maxH + 110) / ch, (winW - 10) / cw)
+    : Math.min(maxH / ch, 460 / cw, 1);
   const fit  = baseFit * zoom;
   fitRef.current = fit; // keep ref in sync so callbacks can read it
   const dispW = Math.round(cw * fit), dispH = Math.round(ch * fit);
   const zoomPct = Math.round(zoom * 100);
 
   return (
-    <div style={{height:"100vh",background:"#F7F3EE",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+    <div style={{height:"100vh",background:isPreview?(urlParams.bg?"#"+urlParams.bg:"#FFFFFF"):"#F7F3EE",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
       {/* Top bar */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+      <div style={{display:isPreview?"none":"flex",alignItems:"center",justifyContent:"space-between",
         padding:"10px 20px",background:"rgba(255,255,255,0.78)",backdropFilter:"blur(12px)",
         borderBottom:"1px solid rgba(180,165,150,0.25)",flexShrink:0,zIndex:50}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -4904,7 +4920,7 @@ export default function LinenSignEditor() {
 
         {/* Left toolbar */}
         <div style={{width:72,background:"rgba(255,255,255,0.55)",borderRight:"1px solid rgba(180,165,150,0.2)",
-          display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 0",gap:2,flexShrink:0,zIndex:10}}>
+          display:isPreview?"none":"flex",flexDirection:"column",alignItems:"center",padding:"16px 0",gap:2,flexShrink:0,zIndex:10}}>
           {[
             { icon:"T",  sublabel:"Add Text",     action:addText,                                          active:false },
             { icon:"✾",  sublabel:"Illustrations",action:() => { setShowLibrary(l => !l); setShowShapes(false); setSelectedId(null); }, active:showLibrary },
@@ -4973,10 +4989,10 @@ export default function LinenSignEditor() {
         {/* NOTE: canvas is centred via margin:auto on the child (not align/justify
             center on this flex parent) — centred flex children that overflow a
             scroll container clip off the top/left with no way to scroll to them. */}
-        <div style={{flex:1,display:"flex",padding:"16px 24px",overflow:"auto",position:"relative"}}>
-          <TipsPanel/>
+        <div style={{flex:1,display:"flex",padding:isPreview?0:"16px 24px",overflow:isPreview?"hidden":"auto",position:"relative",pointerEvents:isPreview?"none":undefined}}>
+          {!isPreview && <TipsPanel/>}
           {/* ── Pages bar (multi-page products: envelopes, menus) ── */}
-          {multiPageEnabled && (
+          {multiPageEnabled && !isPreview && (
             <div style={{position:"absolute",bottom:14,left:"50%",transform:"translateX(-50%)",zIndex:60,
               display:"flex",alignItems:"center",gap:10,padding:"8px 14px",
               background:"rgba(252,249,245,0.96)",border:"1px solid rgba(180,165,150,0.4)",
@@ -5011,9 +5027,9 @@ export default function LinenSignEditor() {
           <div ref={canvasRef}
             data-canvas-root
             style={{width:dispW,height:dispH,margin:"auto",flexShrink:0,position:"relative",overflow:"hidden",
-              background:bgColour,
-              boxShadow:"0 8px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-              borderRadius:4}}>
+              background:(isPreview && urlParams.bg) ? "#"+urlParams.bg : bgColour,
+              boxShadow:isPreview?"none":"0 8px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+              borderRadius:isPreview?0:4}}>
             <div
               style={{position:"absolute",inset:0,transform:`scale(${fit})`,transformOrigin:"top left",width:cw,height:ch,
                 cursor:marquee?"crosshair":"default"}}
@@ -5183,7 +5199,7 @@ export default function LinenSignEditor() {
 
         {/* Right panel */}
         <div style={{width:268,background:"rgba(255,255,255,0.62)",borderLeft:"1px solid rgba(180,165,150,0.2)",
-          overflowY:"auto",padding:20,flexShrink:0,zIndex:10}}>
+          display:isPreview?"none":undefined,overflowY:"auto",padding:20,flexShrink:0,zIndex:10}}>
 
           {/* ── Layers panel ── */}
           <div style={{marginBottom:20,paddingBottom:16,borderBottom:"1px solid rgba(180,165,150,0.25)"}}>
