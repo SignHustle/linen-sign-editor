@@ -263,9 +263,11 @@ function getUrlParams() {
       size:       p.get("size")       || null,
       collection: p.get("collection") || null,
       variant:    p.get("variant")    || null,
+      template:   p.get("template")   || null,
+      group:      p.get("group")      || null,
       dev:        p.get("dev")        === "true",
     };
-  } catch { return { type: null, size: null, collection: null, variant: null }; }
+  } catch { return { type: null, size: null, collection: null, variant: null, template: null, group: null }; }
 }
 
 // ─── Browse card image (photo / mock-up slot with grey placeholder) ───────────
@@ -3877,7 +3879,8 @@ function TemplatePreview({ tmpl }) {
 export default function LinenSignEditor() {
   const [urlParams]        = useState(() => getUrlParams());
   const [stage,            setStage]            = useState(() =>
-    (urlParams.size || urlParams.type || urlParams.variant) ? "gallery" : "groups"
+    urlParams.template ? "loading"
+      : (urlParams.size || urlParams.type || urlParams.variant) ? "gallery" : "groups"
   );
   const [pickedGroup,      setPickedGroup]      = useState(null);
   const [pickedType,       setPickedType]       = useState(null);
@@ -4059,6 +4062,17 @@ export default function LinenSignEditor() {
     setPageIdx(0);
     setStage("editor");
   };
+
+  // ── Deep link: ?template=sw12 opens that design straight into the editor ───
+  // Design-first entry. Ad and email links point at one design, not a gallery.
+  // Falls back to normal browsing if the id is unknown.
+  useEffect(() => {
+    if (!urlParams.template) return;
+    const tmpl = TEMPLATES.find(t => t.id === urlParams.template);
+    if (tmpl && !tmpl.placeholder) openTemplate(tmpl);
+    else setStage("groups");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Multi-page (envelopes, menus…) ─────────────────────────────────────────
   // The active page's elements live in the undo-managed `elements`; inactive
@@ -4438,6 +4452,17 @@ export default function LinenSignEditor() {
     onMouseEnter: e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,0.12)"; },
     onMouseLeave: e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 2px 20px rgba(0,0,0,0.06)"; },
   };
+
+  // ── LOADING (deep link resolving) ────────────────────────────────────────
+  if (stage === "loading") {
+    return (
+      <div style={{minHeight:"100vh",background:"#F7F3EE",fontFamily:"Georgia,serif",
+        display:"flex",alignItems:"center",justifyContent:"center",color:"#8A7B6C",
+        fontSize:13,letterSpacing:2}}>
+        OPENING YOUR DESIGN…
+      </div>
+    );
+  }
 
   // ── GROUPS (landing page) ────────────────────────────────────────────────
   if (stage === "groups") {
