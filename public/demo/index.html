@@ -128,6 +128,30 @@ h1.big em{font-weight:300}
 }
 .pt:hover:not(.on){background:var(--cream-deep)}
 .pt.on{background:var(--plum);color:var(--cream)}
+.pt.sv{border-left:1px solid var(--line);border-radius:0 40px 40px 0;margin-left:2px}
+.pt.sv.on{border-radius:40px}
+
+/* Full suite overview */
+.suiteview{position:absolute;inset:24px 0 0 0;display:none;overflow-y:auto;background:var(--white);padding:34px 30px 90px}
+.suiteview.on{display:block}
+.svhead{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--plum-soft);text-align:center;margin-bottom:24px}
+.svgrid{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-width:960px;margin:0 auto}
+.svp{width:172px;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;cursor:pointer;transition:.15s;user-select:none}
+.svp:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(69,28,34,.12)}
+.svp .t{aspect-ratio:3/4;background:var(--cream-deep);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:9px}
+.svp .t img{width:100%;height:100%;object-fit:contain;padding:8px}
+.svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:var(--plum);display:block}
+.svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--plum-soft)}
+
+/* Envelope colour swatches */
+.envcol{display:none;margin:2px 0 14px;padding:0 4px}
+.envcol.on{display:block}
+.envcol>label{display:block;font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--plum-soft);margin-bottom:8px}
+.swrow{display:flex;flex-wrap:wrap;gap:6px}
+.swb{width:23px;height:23px;border-radius:50%;border:1px solid rgba(69,28,34,.25);padding:0;transition:.15s}
+.swb:hover{transform:scale(1.14)}
+.swb.on{box-shadow:0 0 0 2px var(--cream), 0 0 0 4px var(--plum)}
+.swname{font-size:11px;color:var(--plum-soft);margin-top:7px}
 
 .spec{background:var(--cream);border-left:1px solid var(--line);overflow-y:auto;padding:20px 22px 40px}
 .spec h2{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;color:var(--plum);line-height:1.15}
@@ -327,6 +351,7 @@ pre.payload{
   <div class="framewrap">
     <div class="urlbar"><span>signhustle.com.au</span><b id="urltxt">/design/sw12</b><span id="urlnote">— real editor, real Swan Lake template</span></div>
     <iframe id="frame" title="Editor"></iframe>
+    <div class="suiteview" id="suiteview"></div>
     <div class="piecebar" id="piecebar"></div>
   </div>
 
@@ -353,8 +378,9 @@ pre.payload{
     <div class="grp">
       <label>Add to it</label>
       <button class="tog" data-add="back"><span><b>Double sided</b><i>A back you can put a map or a poem on</i></span><span class="px" id="px-back"></span><span class="sw"></span></button>
-      <button class="tog" data-add="env"><span><b>Printed envelope</b><i>Swan Lake envelope, C5 landscape</i></span><span class="px" id="px-env"></span><span class="sw"></span></button>
-      <button class="tog" data-add="liner"><span><b>Envelope liner</b><i>Euro flap, full bleed</i></span><span class="px" id="px-liner"></span><span class="sw"></span></button>
+      <button class="tog" data-add="env"><span><b>Printed envelope</b><i>Swan Lake front and back, C5 landscape</i></span><span class="px" id="px-env"></span><span class="sw"></span></button>
+      <div class="envcol" id="envcol"></div>
+      <button class="tog" data-add="liner"><span><b>Envelope liner</b><i id="linerdesc">Euro flap, full bleed</i></span><span class="px" id="px-liner"></span><span class="sw"></span></button>
       <span class="affects">Changes the design</span>
     </div>
 
@@ -500,20 +526,60 @@ const PRICING = {
 };
 
 /* ── Swan Lake template map, read straight out of App.jsx ────────── */
+// Envelope fronts/backs and liners exist per FLAP SHAPE, not per design:
+// "Option 1" templates are the Euro Flap set, "Option 2" the iFlap set.
+// The flap follows the envelope colour (see ENVELOPE_COLOURS below).
+const ENVELOPES = {
+  euro:  { front:"sw32", back:"sw33" },
+  iflap: { front:"sw34", back:"sw35" },
+};
 const DESIGNS = {
   o1: { label:"Option 1", sub:"Swan Lake · Option 1",
         invite:{ a5:"sw12", "120x180":"sw16", "120x120":"sw20" },
         back:  { a5:"sw13", "120x180":"sw17", "120x120":"sw21" },
-        details:"sw24", rsvp:"sw28", env:"sw32", liner:"sw50" },
+        details:"sw24", rsvp:"sw28", liner:{ euro:"sw50", iflap:"sw51" } },
   o2: { label:"Option 2", sub:"Swan Lake · Option 2",
         invite:{ a5:"sw14", "120x180":"sw18", "120x120":"sw22" },
         back:  { a5:"sw15", "120x180":"sw19", "120x120":"sw23" },
-        details:"sw26", rsvp:"sw30", env:"sw34", liner:"sw55" },
+        details:"sw26", rsvp:"sw30", liner:{ euro:"sw55", iflap:"sw56" } },
   o3: { label:"Option 3", sub:"Swan Lake · Option 3",
         invite:{ a5:"sw36", "120x180":"sw38", "120x120":"sw41" },
         back:  { a5:"sw37", "120x180":"sw39", "120x120":"sw40" },
-        details:"sw24", rsvp:"sw28", env:"sw32", liner:"sw57" },
+        details:"sw24", rsvp:"sw28", liner:{ euro:"sw57", iflap:"sw58" } },
 };
+
+/* ── Envelope colours — the physical stock we carry, CMYK from the
+      supplier swatch tables. Burnt Orange, Rouge and Marsala are the
+      iFlap envelopes; every other colour is Euro Flap. ────────────── */
+const ENVELOPE_COLOURS = [
+  { name:"Harvest",       cmyk:[34,67,95,29], flap:"euro"  },
+  { name:"Merlot",        cmyk:[47,66,46,23], flap:"euro"  },
+  { name:"Black",         cmyk:[60,40,40,100],flap:"euro"  },
+  { name:"Marsala",       cmyk:[55,90,90,0],  flap:"iflap" },
+  { name:"Emerald",       cmyk:[73,47,48,28], flap:"euro"  },
+  { name:"Rouge",         cmyk:[31,87,74,0],  flap:"iflap" },
+  { name:"Burnt Orange",  cmyk:[0,66,80,10],  flap:"iflap" },
+  { name:"Matcha",        cmyk:[19,10,30,7],  flap:"euro"  },
+  { name:"Pumpkin",       cmyk:[0,55,84,0],   flap:"euro"  },
+  { name:"Kiwi",          cmyk:[24,24,81,0],  flap:"euro"  },
+  { name:"Midnight Blue", cmyk:[92,70,35,25], flap:"euro"  },
+  { name:"Buttermilk",    cmyk:[2,14,31,3],   flap:"euro"  },
+  { name:"Indigo",        cmyk:[88,66,7,7],   flap:"euro"  },
+  { name:"Blush",         cmyk:[0,17,15,0],   flap:"euro"  },
+  { name:"Rosa",          cmyk:[0,23,10,0],   flap:"euro"  },
+  { name:"Duck Egg Blue", cmyk:[20,0,4,15],   flap:"euro"  },
+  { name:"Light Sky",     cmyk:[15,0,1,2],    flap:"euro"  },
+  { name:"Fuschia",       cmyk:[7,80,1,0],    flap:"euro"  },
+  { name:"Almond",        cmyk:[3,5,8,2],     flap:"euro"  },
+  { name:"Mauve",         cmyk:[28,38,5,1],   flap:"euro"  },
+];
+function cmykToHex([c,m,y,k]){
+  const f = v => Math.round(255 * (1 - v/100) * (1 - k/100));
+  return "#" + [f(c),f(m),f(y)].map(n => n.toString(16).padStart(2,"0")).join("");
+}
+function envColour(){ return ENVELOPE_COLOURS.find(c => c.name===S.envColour) || ENVELOPE_COLOURS[18]; }
+function envFlap(){ return envColour().flap; }
+function flapLabel(){ return envFlap()==="euro" ? "Euro flap" : "iFlap"; }
 const SIZES = [
   { key:"a5",       label:"A5",     d:"148×210" },
   { key:"120x180",  label:"5×7in",  d:"120×180" },
@@ -529,7 +595,7 @@ const QTYS = [25,50,75,100,150];
 /* ── State ──────────────────────────────────────────────────────── */
 const S = {
   design:"o1", size:"a5", card:"matte", qty:50,
-  back:false, env:false, liner:false, piece:"invite",
+  back:false, env:false, liner:false, piece:"invite", envColour:"Almond",
   suite:false, path:null, email:null, cartPayload:null,
 };
 const STEPS = ["00 Ad","01 Edit","02 Specify","03 Suite","04 Fork","05 Email","06 Cart"];
@@ -569,7 +635,7 @@ $("picks").innerHTML = Object.entries(DESIGNS).map(([k,d]) => {
 function go(id, designKey){
   if (designKey) S.design = designKey;
   S.size="a5"; S.card="matte"; S.qty=50; S.back=false; S.env=false; S.liner=false; S.suite=false;
-  S.piece="invite";
+  S.piece="invite"; S.envColour="Almond";
   show("s-edit"); setStep(1);
   buildSpec();
   loadFrame();
@@ -579,11 +645,12 @@ function go(id, designKey){
 // Every selected piece is a tab at the bottom of the editor, so she can
 // switch between the designs in her order at any time.
 function pieceList(){
-  const d = DESIGNS[S.design];
+  const d = DESIGNS[S.design], f = envFlap();
   const list = [ { key:"invite", label:"Invitation", id:d.invite[S.size] } ];
-  if (S.back)  list.push({ key:"back",  label:"Back",     id:d.back[S.size] });
-  if (S.env)   list.push({ key:"env",   label:"Envelope", id:d.env });
-  if (S.liner) list.push({ key:"liner", label:"Liner",    id:d.liner });
+  if (S.back)  list.push({ key:"back",     label:"Back",           id:d.back[S.size] });
+  if (S.env){  list.push({ key:"envFront", label:"Envelope front", id:ENVELOPES[f].front });
+               list.push({ key:"envBack",  label:"Envelope back",  id:ENVELOPES[f].back }); }
+  if (S.liner) list.push({ key:"liner",    label:"Liner",          id:d.liner[f] });
   return list;
 }
 function currentTemplate(){
@@ -592,22 +659,50 @@ function currentTemplate(){
 }
 function renderPieces(){
   const list = pieceList();
-  if (!list.some(p => p.key===S.piece)) S.piece = "invite";
+  if (S.piece!=="overview" && !list.some(p => p.key===S.piece)) S.piece = "invite";
   $("piecebar").innerHTML = list.map(p =>
-    '<button class="pt'+(S.piece===p.key?' on':'')+'" onclick="setPiece(\''+p.key+'\')">'+p.label+'</button>').join("");
+    '<button class="pt'+(S.piece===p.key?' on':'')+'" onclick="setPiece(\''+p.key+'\')">'+p.label+'</button>').join("")
+    + '<button class="pt sv'+(S.piece==="overview"?' on':'')+'" onclick="setPiece(\'overview\')">Full suite</button>';
 }
 function setPiece(k){
   if (S.piece===k) return;
   S.piece = k;
-  renderPieces();
   loadFrame();
 }
 function loadFrame(){
-  const id = currentTemplate();
-  $("frame").src = tmplUrl(id);
-  $("urltxt").textContent = "/design/" + id;
-  $("specsub").textContent = DESIGNS[S.design].sub;
   renderPieces();
+  if (S.piece==="overview"){
+    $("frame").style.display = "none";
+    $("suiteview").classList.add("on");
+    renderSuiteView();
+    $("urltxt").textContent = "/design/suite";
+  } else {
+    $("suiteview").classList.remove("on");
+    $("frame").style.display = "";
+    const id = currentTemplate();
+    $("frame").src = tmplUrl(id);
+    $("urltxt").textContent = "/design/" + id;
+  }
+  $("specsub").textContent = DESIGNS[S.design].sub;
+}
+function renderSuiteView(){
+  const hex = cmykToHex(envColour().cmyk);
+  const tinted = { envFront:1, envBack:1, liner:1 };
+  $("suiteview").innerHTML =
+    '<div class="svhead">Your suite · double-click a piece to edit it</div><div class="svgrid">' +
+    pieceList().map(p =>
+      '<div class="svp" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
+      + '<div class="t"'+(tinted[p.key]?' style="background:'+hex+'"':'')+'>'
+      + '<img src="/borders/'+p.id+'-border.svg" alt="" onerror="thumbFallback(this,\''+p.id+'\',\''+p.label+'\')">'
+      + '</div><b>'+p.label+'</b><span>'+p.id
+      + (tinted[p.key] ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>').join("")
+    + '</div>';
+}
+function pickEnvColour(name){
+  S.envColour = name;
+  buildSpec();
+  if (["envFront","envBack","liner","overview"].includes(S.piece)) loadFrame();
+  else renderPieces();
 }
 function buildSpec(){
   $("opt-size").innerHTML = SIZES.map(s =>
@@ -619,6 +714,17 @@ function buildSpec(){
   }).join("");
   $("opt-qty").innerHTML = QTYS.map(q =>
     '<button class="opt'+(S.qty===q?' on':'')+'" onclick="pickQty('+q+')">'+q+'</button>').join("");
+  const colWrap = $("envcol");
+  if (S.env){
+    colWrap.classList.add("on");
+    colWrap.innerHTML =
+      '<label>Envelope colour</label><div class="swrow">' +
+      ENVELOPE_COLOURS.map(c =>
+        '<button class="swb'+(c.name===S.envColour?' on':'')+'" style="background:'+cmykToHex(c.cmyk)+'" '
+        + 'title="'+c.name+'" onclick="pickEnvColour(\''+c.name+'\')"></button>').join("") +
+      '</div><div class="swname">'+S.envColour+' · '+flapLabel()+'</div>';
+  } else { colWrap.classList.remove("on"); colWrap.innerHTML=""; }
+  $("linerdesc").textContent = flapLabel() + ", full bleed";
   document.querySelectorAll(".tog").forEach(b=>{
     const k=b.dataset.add;
     b.classList.toggle("on", S[k]);
@@ -626,7 +732,8 @@ function buildSpec(){
     b.onclick = ()=>{
       S[k]=!S[k];
       // Adding a piece jumps the editor to it; removing the one on screen falls back.
-      if (S[k]) S.piece = k; else if (S.piece===k) S.piece = "invite";
+      const jump = { back:"back", env:"envFront", liner:"liner" };
+      if (S[k]) S.piece = jump[k];
       buildSpec(); price(); flashFrame(k);
     };
   });
@@ -680,13 +787,13 @@ function price(){
 /* ── 03 Suite ───────────────────────────────────────────────────── */
 function openSuite(){
   setStep(3);
-  const d = DESIGNS[S.design];
+  const d = DESIGNS[S.design], f = envFlap();
   const pieces = [
-    { id:d.invite[S.size], n:"Invitation" },
-    { id:d.details,        n:"Details card" },
-    { id:d.rsvp,           n:"RSVP card" },
-    { id:d.env,            n:"Envelope" },
-    { id:d.liner,          n:"Liner" },
+    { id:d.invite[S.size],   n:"Invitation" },
+    { id:d.details,          n:"Details card" },
+    { id:d.rsvp,             n:"RSVP card" },
+    { id:ENVELOPES[f].front, n:"Envelope" },
+    { id:d.liner[f],         n:"Liner" },
   ];
   $("suitegrid").innerHTML = pieces.map(p =>
       '<div class="pc"><div class="t">'
@@ -762,7 +869,9 @@ function renderSummary(){
     ["Design", "Swan Lake " + d.label + " · template " + currentTemplate()],
     ["Size", SIZES.find(s=>s.key===S.size).label],
     ["Card", CARDS.find(c=>c.key===S.card).label],
-    ["Added", [S.back&&"double sided", S.env&&"printed envelope", S.liner&&"liner"].filter(Boolean).join(", ") || "nothing"],
+    ["Added", [S.back&&"double sided",
+               S.env&&("printed envelope front + back — "+S.envColour+", "+flapLabel()),
+               S.liner&&"liner"].filter(Boolean).join(", ") || "nothing"],
     ["Bought", S.suite ? "Full Swan Lake suite (5 pieces)" : "Invitation only"],
     ["Path", isDl ? "Instant download — " + money(dl) : "Printed, " + S.qty + " sets — " + money(t.total)],
     ["Account", S.email ? "Email captured: " + S.email + " (magic link, no password)" : "Guest checkout, no account"],
@@ -780,7 +889,9 @@ function renderSummary(){
           type:"linenSignAddToCart",
           variant:"demo-"+currentTemplate(),
           summary: d.label + " invitation (" + SIZES.find(s=>s.key===S.size).label + ")",
-          spec:{ size:S.size, card:S.card, qty:S.qty, doubleSided:S.back, envelope:S.env, liner:S.liner, suite:S.suite },
+          spec:{ size:S.size, card:S.card, qty:S.qty, doubleSided:S.back,
+                 envelope:S.env ? { colour:S.envColour, flap:envFlap() } : false,
+                 liner:S.liner, suite:S.suite },
           totals:{ unit:+unitPrice().toFixed(2), total:+t.total.toFixed(2) }
         }
       }, null, 2);
