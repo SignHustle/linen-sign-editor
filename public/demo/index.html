@@ -412,7 +412,7 @@ pre.payload{
       </div>
       <div class="fk dark">
         <h4>We print it <em>for you</em></h4>
-        <p style="font-size:12.5px;opacity:.8">Cotton card, envelopes, delivered.</p>
+        <p style="font-size:12.5px;opacity:.8">Premium card, envelopes, delivered.</p>
         <div class="amt" id="fk-pr"></div>
         <ul>
           <li>Printed and posted Australia wide</li>
@@ -469,21 +469,22 @@ pre.payload{
 
 <script>
 /* ════════════════════════════════════════════════════════════════════
-   PLACEHOLDER PRICING — swap these for the pricing master figures.
-   Everything downstream is derived, so this object is the only edit.
+   PRICING — retail figures from SignHustleCo_Pricing_Master_v4_9.xlsx
+   (AUD incl. GST) except where marked TBD. Everything downstream is
+   derived, so this object is the only edit.
    ════════════════════════════════════════════════════════════════════ */
 const PRICING = {
   currency: "$",
-  digitalSingle: 29,          // one design, print-ready file
-  digitalSuite:  69,          // whole matching suite  (2.4× single)
-  printBase:     3.20,        // per invitation at qty 50, signature card
-  card: { signature:0, cotton:1.10, pearl:0.60 },
-  addons: { back:0.80, env:0.90, liner:1.20 },
-  suiteExtraPerSet: 4.40,     // details + rsvp + envelope, per guest set
-  suitePrintDiscount: 0.18,   // 18% off when the whole suite is printed
-  qtyLadder: { 25:1.15, 50:1.00, 75:0.93, 100:0.88, 150:0.82 },
-  shipping: 14.95,
-  moq: 25,
+  digitalSingle: 25,          // matches Swan Lake single template price
+  digitalSuite:  59,          // TBD: 2.36× single, inside the 2.2–2.5× band — needs Kate's sign-off
+  printBase:     2.60,        // A5 / 5×7in 1-sided retail at qty 50–74 (square 120×120 not in master)
+  card: { matte:0, textured:0, cream:0 },   // all three stocks priced the same in the master
+  addons: { back:0.40, env:0.90, liner:1.20 },  // back = 2-sided upcharge; env/liner TBD, no price in master
+  suiteExtraPerSet: 4.60,     // details A6 $2.30 + RSVP A6 $2.30 at qty 50–74; envelope printing TBD
+  suitePrintDiscount: 0.18,   // TBD: suite mechanic is a launch decision, not in master
+  qtyLadder: { 25:1.35, 50:1.00, 75:0.85, 100:0.81, 150:0.62 },  // A5 1-sided tiers vs 50–74 base
+  shipping: 14.95,            // TBD: not in the pricing master
+  moq: 2,                     // flat card MIN column
 };
 
 /* ── Swan Lake template map, read straight out of App.jsx ────────── */
@@ -507,15 +508,15 @@ const SIZES = [
   { key:"120x120",  label:"Square", d:"120×120" },
 ];
 const CARDS = [
-  { key:"signature", label:"Signature 300gsm" },
-  { key:"cotton",    label:"Cotton 600gsm" },
-  { key:"pearl",     label:"Pearl shimmer" },
+  { key:"matte",    label:"Matte White 350gsm" },
+  { key:"textured", label:"Textured White 300gsm" },
+  { key:"cream",    label:"Matte Cream 300gsm" },
 ];
 const QTYS = [25,50,75,100,150];
 
 /* ── State ──────────────────────────────────────────────────────── */
 const S = {
-  design:"o1", size:"a5", card:"signature", qty:50,
+  design:"o1", size:"a5", card:"matte", qty:50,
   back:false, env:false, liner:false,
   suite:false, path:null, email:null, cartPayload:null,
 };
@@ -555,7 +556,7 @@ $("picks").innerHTML = Object.entries(DESIGNS).map(([k,d]) => {
 
 function go(id, designKey){
   if (designKey) S.design = designKey;
-  S.size="a5"; S.card="signature"; S.qty=50; S.back=false; S.env=false; S.liner=false; S.suite=false;
+  S.size="a5"; S.card="matte"; S.qty=50; S.back=false; S.env=false; S.liner=false; S.suite=false;
   show("s-edit"); setStep(1);
   buildSpec();
   loadFrame();
@@ -758,7 +759,7 @@ window.addEventListener("message", e => {
 });
 
 function restart(){
-  S.design="o1"; S.size="a5"; S.card="signature"; S.qty=50;
+  S.design="o1"; S.size="a5"; S.card="matte"; S.qty=50;
   S.back=S.env=S.liner=S.suite=false; S.path=null; S.email=null; S.cartPayload=null;
   document.querySelectorAll(".ov").forEach(o=>o.classList.remove("on"));
   show("s-ad"); setStep(0);
