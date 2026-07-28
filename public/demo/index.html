@@ -131,29 +131,24 @@ h1.big em{font-weight:300}
 .pt.sv{border-left:1px solid var(--line);border-radius:0 40px 40px 0;margin-left:2px}
 .pt.sv.on{border-radius:40px}
 
-/* Full suite overview — flat-lay mock-up on textured paper */
+/* Full suite overview — photographic flat-lay built from Kate's PSD mock-up.
+   Each piece is a recoloured photo crop; the live design prints onto it
+   with multiply blending, full bleed to the paper's pixel rect. */
 .suiteview{position:absolute;inset:24px 0 0 0;display:none;overflow-y:auto;
-  background:#ECE8E1 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.40 0 0 0 0 0.36 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
-  padding:46px 40px 110px}
+  background:#fff;padding:40px 40px 110px}
 .suiteview.on{display:block}
-.svhead{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:#77685C;text-align:center;margin-bottom:34px}
-.svgrid{display:flex;flex-wrap:wrap;gap:48px 42px;justify-content:center;align-items:flex-start;max-width:1060px;margin:0 auto}
+.svhead{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:#9A8C7E;text-align:center;margin-bottom:26px}
+.svgrid{display:flex;flex-wrap:wrap;gap:8px 26px;justify-content:center;align-items:flex-start;max-width:1100px;margin:0 auto}
 .svp{cursor:pointer;user-select:none;text-align:center;transition:.18s}
 .svp:hover{transform:translateY(-4px)}
-.svp .paper{position:relative;background:#fff;overflow:hidden;
-  box-shadow:0 26px 54px rgba(45,35,25,.30), 0 8px 18px rgba(45,35,25,.14), 0 1px 3px rgba(45,35,25,.12)}
-.svp.land .paper{width:344px;aspect-ratio:229/162}
-.svp.port .paper{width:232px}
-.svp .paper iframe{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;pointer-events:none}
-/* Liner shown inserted in the open envelope: liner artwork in the flap
-   area, envelope-colour pocket over the lower half */
-.svp .paper.linerenv iframe{left:6%;top:2.5%;width:88%;height:95%}
-.pocket{position:absolute;left:0;right:0;bottom:0;height:47%;
-  box-shadow:0 -10px 24px rgba(40,30,20,.20);
-  background-image:linear-gradient(112deg,rgba(255,255,255,.10),rgba(0,0,0,.05) 46%,rgba(0,0,0,0) 60%),
-                   linear-gradient(248deg,rgba(255,255,255,.08),rgba(0,0,0,.04) 46%,rgba(0,0,0,0) 60%)}
-.svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#4A3A30;display:block;margin-top:14px}
-.svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#77685C}
+.svp .mock{position:relative;overflow:hidden}
+.svp .mock > img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
+.svp .mock iframe{position:absolute;margin:0;border:0;pointer-events:none;mix-blend-mode:multiply}
+.svp .mock iframe.linr{mix-blend-mode:normal;inset:0;width:100%;height:100%;
+  -webkit-mask-image:url('/demo/mockup/linermask.png');mask-image:url('/demo/mockup/linermask.png');
+  -webkit-mask-size:100% 100%;mask-size:100% 100%}
+.svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#4A3A30;display:block;margin-top:6px}
+.svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#9A8C7E}
 
 /* Envelope colour swatches */
 .envcol{display:none;margin:2px 0 14px;padding:0 4px}
@@ -704,35 +699,54 @@ function loadFrame(){
   }
   $("specsub").textContent = DESIGNS[S.design].sub;
 }
+/* Photo-mockup geometry measured from the PSD (fractions of each crop). */
+const MOCK = {
+  openenv:  { aspect:0.8174 },
+  envfront: { aspect:1.4107, paper:[0.0329,0.0464,0.9342,0.9071] },
+  envback:  { aspect:1.4173, paper:[0.0329,0.0467,0.9342,0.9067] },
+  a5:       { aspect:0.7268, paper:[0.0506,0.0367,0.8989,0.9265] },
+  a6l:      { aspect:1.3617, paper:[0.0502,0.0684,0.8996,0.8632] },
+  a6p:      { aspect:0.7344, paper:[0.0684,0.0502,0.8632,0.8996] },
+};
+const colourSlug = () => S.envColour.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+// One mock piece: photo base + live design iframe printed on the paper rect.
+function mockPiece(p, base, geo, width, opts){
+  opts = opts || {};
+  const g = MOCK[geo], r = g.paper;
+  const overlay = opts.linerMask
+    ? '<iframe class="linr" loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+cmykToHex(envColour().cmyk).slice(1)+'" title="'+p.label+'"></iframe>'
+    : '<iframe loading="lazy" style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
+      + 'src="'+tmplUrl(p.id)+'&preview=1" title="'+p.label+'"></iframe>';
+  const aspect = opts.aspect || g.aspect;
+  return '<div class="svp" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
+    + '<div class="mock" style="width:'+width+'px;aspect-ratio:'+aspect+'">'
+    + '<img src="/demo/mockup/'+base+'.jpg" alt="">' + overlay
+    + '</div><b>'+p.label+'</b><span>'+p.id
+    + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>';
+}
 function renderSuiteView(){
-  // Real designs, straight from the editor in canvas-only preview mode.
-  // Envelope pieces pass the paper colour through so the canvas prints on it.
-  const hex = cmykToHex(envColour().cmyk);
-  const sizeAR = { a5:"148/210", "120x180":"120/180", "120x120":"1/1" };
+  // Kate's photographic flat-lay, recoloured to the chosen envelope stock,
+  // with the real templates rendered live onto each paper.
+  const slug = colourSlug();
+  const cardBase = "card-a5";                      // stretched for 5×7 / square
+  const a6base = S.design==="o2" ? "card-a6p" : "card-a6l";
+  const a6geo  = S.design==="o2" ? "a6p" : "a6l";
+  // Container aspect that keeps the design at its true print ratio: the
+  // paper rect is a fixed fraction of the crop, so scale by its fractions.
+  const sizeR = { a5:148/210, "120x180":120/180, "120x120":1 }[S.size];
+  const cardAspect = sizeR * MOCK.a5.paper[3] / MOCK.a5.paper[2];
+  const cardW = S.size==="120x120" ? 260 : 220;
   $("suiteview").innerHTML =
     '<div class="svhead">Your suite · double-click a piece to edit it</div><div class="svgrid">' +
     pieceList().map(p => {
-      // Liner renders inserted into the open envelope: envelope-colour card,
-      // liner artwork through the flap, pocket over the lower half.
-      if (p.key==="liner") {
-        return '<div class="svp port" ondblclick="setPiece(\'liner\')" title="Double-click to edit">'
-          + '<div class="paper linerenv" style="aspect-ratio:229/300;width:252px;background:'+hex+'">'
-          + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+hex.slice(1)+'" title="Liner"></iframe>'
-          + '<div class="pocket" style="background-color:'+hex+'"></div>'
-          + '</div><b>'+p.label+'</b><span>'+p.id+' · '+S.envColour+' · '+flapLabel()+'</span></div>';
+      switch (p.key) {
+        case "liner":    return mockPiece(p, "openenv-"+slug,  "openenv",  270, {linerMask:true, env:true});
+        case "envFront": return mockPiece(p, "envfront-"+slug, "envfront", 330, {env:true});
+        case "envBack":  return mockPiece(p, "envback-"+slug,  "envback",  330, {env:true});
+        case "details":
+        case "rsvp":     return mockPiece(p, a6base, a6geo, S.design==="o2" ? 190 : 260);
+        default:         return mockPiece(p, cardBase, "a5", cardW, {aspect: cardAspect});
       }
-      const isEnv = p.key==="envFront" || p.key==="envBack";
-      const bg    = isEnv ? "&bg="+hex.slice(1) : "";
-      // Details/RSVP are A6: landscape for Options 1 & 3, portrait for Option 2.
-      const isA6  = p.key==="details" || p.key==="rsvp";
-      const style = isEnv ? '' :
-        isA6 ? (S.design==="o2" ? ' style="aspect-ratio:105/148;width:180px"' : ' style="aspect-ratio:148/105;width:280px"')
-             : ' style="aspect-ratio:'+sizeAR[S.size]+'"';
-      return '<div class="svp '+(isEnv?'land':'port')+'" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
-        + '<div class="paper"'+style+'>'
-        + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1'+bg+'" title="'+p.label+'"></iframe>'
-        + '</div><b>'+p.label+'</b><span>'+p.id
-        + (isEnv ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>';
     }).join("") + '</div>';
 }
 function pickEnvColour(name){
