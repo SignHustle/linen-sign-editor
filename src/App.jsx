@@ -265,9 +265,10 @@ function getUrlParams() {
       variant:    p.get("variant")    || null,
       template:   p.get("template")   || null,
       group:      p.get("group")      || null,
-      dev:        p.get("dev")        === "true",
       preview:    p.get("preview")    === "1",
       bg:         p.get("bg")         || null,
+      lockbg:     p.get("lockbg")     === "1",
+      dev:        p.get("dev")        === "true",
     };
   } catch { return { type: null, size: null, collection: null, variant: null, template: null, group: null }; }
 }
@@ -4078,7 +4079,12 @@ export default function LinenSignEditor() {
   useEffect(() => {
     if (!urlParams.template) return;
     const tmpl = TEMPLATES.find(t => t.id === urlParams.template);
-    if (tmpl && !tmpl.placeholder) openTemplate(tmpl);
+    if (tmpl && !tmpl.placeholder) {
+      openTemplate(tmpl);
+      // Locked paper colour (coloured card stock / envelope paper): the
+      // canvas background is the paper, not a design choice.
+      if (urlParams.bg && urlParams.lockbg) setBgColour("#" + urlParams.bg);
+    }
     else setStage("groups");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -5340,6 +5346,8 @@ export default function LinenSignEditor() {
                 <span style={{fontSize:9,letterSpacing:1.5,display:"block",marginTop:3}}>● CORNER = RESIZE</span>
                 <span style={{fontSize:9,letterSpacing:1.5,display:"block",marginTop:3}}>CTRL+Z = UNDO</span>
               </div>
+              {/* Paper colour locked (coloured stock / envelopes): no bg picker */}
+              {!urlParams.lockbg && (
               <div style={{borderTop:"1px solid rgba(180,165,150,0.2)",paddingTop:20}}>
                 <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:12}}>BACKGROUND COLOUR</div>
                 <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:12}}>
@@ -5370,6 +5378,7 @@ export default function LinenSignEditor() {
                   <span style={{fontSize:11,color:"#6B5E52",fontFamily:"Georgia,serif"}}>Linen texture overlay</span>
                 </label>
               </div>
+              )}
             </>
           ) : (
             <>

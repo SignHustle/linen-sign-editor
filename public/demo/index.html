@@ -141,12 +141,17 @@ h1.big em{font-weight:300}
 .svgrid{display:flex;flex-wrap:wrap;gap:8px 26px;justify-content:center;align-items:flex-start;max-width:1100px;margin:0 auto}
 .svp{cursor:pointer;user-select:none;text-align:center;transition:.18s}
 .svp:hover{transform:translateY(-4px)}
-.svp .mock{position:relative;overflow:hidden}
+.svp .mock{position:relative;overflow:hidden;
+  filter:drop-shadow(0 14px 22px rgba(45,35,25,.30)) drop-shadow(0 3px 7px rgba(45,35,25,.15))}
 .svp .mock > img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
 .svp .mock iframe{position:absolute;margin:0;border:0;pointer-events:none;mix-blend-mode:multiply}
-.svp .mock iframe.linr{mix-blend-mode:normal;inset:0;width:100%;height:100%;
+/* Liner prints through the flap: mask lives on a wrapper div (masking an
+   iframe element directly is unreliable in Firefox) */
+.linrwrap{position:absolute;inset:0;
   -webkit-mask-image:url('/demo/mockup/linermask.png');mask-image:url('/demo/mockup/linermask.png');
   -webkit-mask-size:100% 100%;mask-size:100% 100%}
+.linrwrap iframe{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;
+  pointer-events:none;mix-blend-mode:normal}
 .svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#4A3A30;display:block;margin-top:6px}
 .svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#9A8C7E}
 
@@ -367,6 +372,12 @@ pre.payload{
     <div class="sub" id="specsub">Swan Lake · Option 1</div>
 
     <div class="grp">
+      <label>Design</label>
+      <div class="opts" id="opt-design"></div>
+      <span class="affects">Changes the design</span>
+    </div>
+
+    <div class="grp">
       <label>Size</label>
       <div class="opts" id="opt-size"></div>
       <span class="affects">Changes the design</span>
@@ -379,7 +390,8 @@ pre.payload{
     <div class="grp">
       <label>Card</label>
       <div class="opts" id="opt-card"></div>
-      <span class="affects" style="color:var(--plum-soft)">Price only</span>
+      <div class="envcol" id="cardcol"></div>
+      <span class="affects" style="color:var(--plum-soft)" id="carddesc">Price only</span>
     </div>
 
     <div class="grp">
@@ -387,7 +399,7 @@ pre.payload{
       <button class="tog" data-add="back"><span><b>Double sided</b><i>A back you can put a map or a poem on</i></span><span class="px" id="px-back"></span><span class="sw"></span></button>
       <button class="tog" data-add="details"><span><b>Details card</b><i>Accommodation, wishing well, the extras</i></span><span class="px" id="px-details"></span><span class="sw"></span></button>
       <button class="tog" data-add="rsvp"><span><b>RSVP card</b><i>For guests to post back</i></span><span class="px" id="px-rsvp"></span><span class="sw"></span></button>
-      <button class="tog" data-add="env"><span><b>Printed envelope</b><i>Swan Lake front and back, C5 landscape</i></span><span class="px" id="px-env"></span><span class="sw"></span></button>
+      <button class="tog" data-add="env"><span><b>Printed envelope</b><i id="envdesc">Swan Lake front and back, C5 landscape</i></span><span class="px" id="px-env"></span><span class="sw"></span></button>
       <button class="tog" data-add="liner"><span><b>Envelope liner</b><i id="linerdesc">Euro flap, full bleed</i></span><span class="px" id="px-liner"></span><span class="sw"></span></button>
       <div class="envcol" id="envcol"></div>
       <span class="affects">Changes the design</span>
@@ -525,7 +537,7 @@ const PRICING = {
   digitalSingle: 25,          // matches Swan Lake single template price
   digitalSuite:  59,          // TBD: 2.36× single, inside the 2.2–2.5× band — needs Kate's sign-off
   printBase:     2.60,        // A5 / 5×7in 1-sided retail at qty 50–74 (square 120×120 not in master)
-  card: { matte:0, textured:0, cream:0 },   // all three stocks priced the same in the master
+  card: { matte:0, textured:0, cream:0, colour:0.50 },  // coloured stock +$0.50/card per the master
   addons: { back:0.40, details:2.30, rsvp:2.30, env:0.90, liner:1.20 },
   // back = 2-sided upcharge; details/rsvp = A6 1-sided retail at qty 50–74;
   // env/liner TBD, no price in master
@@ -537,60 +549,73 @@ const PRICING = {
 };
 
 /* ── Swan Lake template map, read straight out of App.jsx ────────── */
-// Envelope fronts/backs and liners exist per FLAP SHAPE, not per design:
-// "Option 1" templates are the Euro Flap set, "Option 2" the iFlap set.
-// The flap follows the envelope colour (see ENVELOPE_COLOURS below).
+// Envelope fronts/backs exist per SIZE and per FLAP SHAPE ("Option 1"
+// templates are the Euro Flap set, "Option 2" the iFlap set). The size
+// follows the invitation size; the flap follows the envelope colour.
 const ENVELOPES = {
-  euro:  { front:"sw32", back:"sw33" },
-  iflap: { front:"sw34", back:"sw35" },
+  a5:        { label:"C5 landscape",   euro:{front:"sw32",back:"sw33"}, iflap:{front:"sw34",back:"sw35"} },
+  "120x180": { label:"190×130",        euro:{front:"sw42",back:"sw43"}, iflap:{front:"sw44",back:"sw45"} },
+  "120x120": { label:"130×130 square", euro:{front:"sw46",back:"sw47"}, iflap:{front:"sw48",back:"sw49"} },
 };
+// Liners per design × size × flap. Not every combination exists yet —
+// missing ones fall back to the C5 variant of the same design + flap.
+const LINERS = {
+  o1: { a5:{euro:"sw50",iflap:"sw51"}, "120x180":{euro:"sw52",iflap:"sw53"}, "120x120":{iflap:"sw54"} },
+  o2: { a5:{euro:"sw55",iflap:"sw56"}, "120x180":{euro:"sw59"} },
+  o3: { a5:{euro:"sw57",iflap:"sw58"} },
+};
+function linerId(){
+  const L = LINERS[S.design], f = envFlap();
+  return (L[S.size] && L[S.size][f]) || L.a5[f];
+}
 const DESIGNS = {
   o1: { label:"Option 1", sub:"Swan Lake · Option 1",
         invite:{ a5:"sw12", "120x180":"sw16", "120x120":"sw20" },
         back:  { a5:"sw13", "120x180":"sw17", "120x120":"sw21" },
-        details:"sw24", rsvp:"sw28", liner:{ euro:"sw50", iflap:"sw51" } },
+        details:"sw24", rsvp:"sw28" },
   o2: { label:"Option 2", sub:"Swan Lake · Option 2",
         invite:{ a5:"sw14", "120x180":"sw18", "120x120":"sw22" },
         back:  { a5:"sw15", "120x180":"sw19", "120x120":"sw23" },
-        details:"sw26", rsvp:"sw30", liner:{ euro:"sw55", iflap:"sw56" } },
+        details:"sw26", rsvp:"sw30" },
   o3: { label:"Option 3", sub:"Swan Lake · Option 3",
         invite:{ a5:"sw36", "120x180":"sw38", "120x120":"sw41" },
         back:  { a5:"sw37", "120x180":"sw39", "120x120":"sw40" },
-        details:"sw24", rsvp:"sw28", liner:{ euro:"sw57", iflap:"sw58" } },
+        details:"sw24", rsvp:"sw28" },
 };
 
-/* ── Envelope colours — the physical stock we carry, CMYK from the
-      supplier swatch tables. Burnt Orange, Rouge and Marsala are the
-      iFlap envelopes; every other colour is Euro Flap. ────────────── */
-const ENVELOPE_COLOURS = [
-  { name:"Harvest",       cmyk:[34,67,95,29], flap:"euro"  },
-  { name:"Merlot",        cmyk:[47,66,46,23], flap:"euro"  },
-  { name:"Black",         cmyk:[60,40,40,100],flap:"euro"  },
-  { name:"Marsala",       cmyk:[55,90,90,0],  flap:"iflap" },
-  { name:"Emerald",       cmyk:[73,47,48,28], flap:"euro"  },
-  { name:"Rouge",         cmyk:[31,87,74,0],  flap:"iflap" },
-  { name:"Burnt Orange",  cmyk:[0,66,80,10],  flap:"iflap" },
-  { name:"Matcha",        cmyk:[19,10,30,7],  flap:"euro"  },
-  { name:"Pumpkin",       cmyk:[0,55,84,0],   flap:"euro"  },
-  { name:"Kiwi",          cmyk:[24,24,81,0],  flap:"euro"  },
-  { name:"Midnight Blue", cmyk:[92,70,35,25], flap:"euro"  },
-  { name:"Buttermilk",    cmyk:[2,14,31,3],   flap:"euro"  },
-  { name:"Indigo",        cmyk:[88,66,7,7],   flap:"euro"  },
-  { name:"Blush",         cmyk:[0,17,15,0],   flap:"euro"  },
-  { name:"Rosa",          cmyk:[0,23,10,0],   flap:"euro"  },
-  { name:"Duck Egg Blue", cmyk:[20,0,4,15],   flap:"euro"  },
-  { name:"Light Sky",     cmyk:[15,0,1,2],    flap:"euro"  },
-  { name:"Fuschia",       cmyk:[7,80,1,0],    flap:"euro"  },
-  { name:"Almond",        cmyk:[3,5,8,2],     flap:"euro"  },
-  { name:"Mauve",         cmyk:[28,38,5,1],   flap:"euro"  },
+/* ── Paper colours — sampled from the photographed envelope range and
+      white-balanced, so swatches match the physical stock. Marsala,
+      Rouge and Burnt Orange are the iFlap envelopes; the rest Euro. ── */
+const PALETTE = [
+  { name:"Black",         hex:"#2C2A2D" },
+  { name:"Emerald",       hex:"#485B57" },
+  { name:"Matcha",        hex:"#D5CEA0" },
+  { name:"Kiwi",          hex:"#CAB644" },
+  { name:"Midnight Blue", hex:"#313447" },
+  { name:"Indigo",        hex:"#2D477F" },
+  { name:"Duck Egg Blue", hex:"#C0CEC8" },
+  { name:"Light Sky",     hex:"#EAEFEC" },
+  { name:"Almond",        hex:"#D6C1A6" },
+  { name:"Mauve",         hex:"#B49BAC" },
+  { name:"Harvest",       hex:"#764627" },
+  { name:"Merlot",        hex:"#683C3A" },
+  { name:"Marsala",       hex:"#8C2425" },
+  { name:"Rouge",         hex:"#B24419" },
+  { name:"Burnt Orange",  hex:"#BF4C1F" },
+  { name:"Pumpkin",       hex:"#E26E22" },
+  { name:"Buttermilk",    hex:"#E3C38E" },
+  { name:"Blush",         hex:"#F8CFB2" },
+  { name:"Rosa",          hex:"#EBC0AC" },
+  { name:"Fuschia",       hex:"#A43663" },
 ];
-function cmykToHex([c,m,y,k]){
-  const f = v => Math.round(255 * (1 - v/100) * (1 - k/100));
-  return "#" + [f(c),f(m),f(y)].map(n => n.toString(16).padStart(2,"0")).join("");
-}
-function envColour(){ return ENVELOPE_COLOURS.find(c => c.name===S.envColour) || ENVELOPE_COLOURS[18]; }
+const IFLAP = { "Marsala":1, "Rouge":1, "Burnt Orange":1 };
+const ENVELOPE_COLOURS = [{ name:"White", hex:"#FAFAF7", flap:"euro" }]
+  .concat(PALETTE.map(c => ({ name:c.name, hex:c.hex, flap: IFLAP[c.name] ? "iflap" : "euro" })));
+function envColour(){ return ENVELOPE_COLOURS.find(c => c.name===S.envColour) || ENVELOPE_COLOURS[0]; }
 function envFlap(){ return envColour().flap; }
 function flapLabel(){ return envFlap()==="euro" ? "Euro flap" : "iFlap"; }
+function cardColour(){ return PALETTE.find(c => c.name===S.cardColour) || PALETTE[16]; }
+const slugName = n => n.toLowerCase().replace(/[^a-z0-9]+/g,"-");
 const SIZES = [
   { key:"a5",       label:"A5",     d:"148×210" },
   { key:"120x180",  label:"5×7in",  d:"120×180" },
@@ -600,12 +625,13 @@ const CARDS = [
   { key:"matte",    label:"Matte White 350gsm" },
   { key:"textured", label:"Textured White 300gsm" },
   { key:"cream",    label:"Matte Cream 300gsm" },
+  { key:"colour",   label:"Coloured 300gsm" },
 ];
 const QTYS = [25,50,75,100,150];
 
 /* ── State ──────────────────────────────────────────────────────── */
 const S = {
-  design:"o1", size:"a5", card:"matte", qty:50,
+  design:"o1", size:"a5", card:"matte", cardColour:"Buttermilk", qty:50,
   back:false, details:false, rsvp:false, env:false, liner:false, piece:"invite", envColour:"Almond",
   suite:false, path:null, email:null, cartPayload:null,
 };
@@ -657,15 +683,22 @@ function go(id, designKey){
 // Every selected piece is a tab at the bottom of the editor, so she can
 // switch between the designs in her order at any time.
 function pieceList(){
-  const d = DESIGNS[S.design], f = envFlap();
+  const d = DESIGNS[S.design], f = envFlap(), E = ENVELOPES[S.size];
   const list = [ { key:"invite", label:"Invitation", id:d.invite[S.size] } ];
   if (S.back)    list.push({ key:"back",     label:"Back",           id:d.back[S.size] });
   if (S.details) list.push({ key:"details",  label:"Details",        id:d.details });
   if (S.rsvp)    list.push({ key:"rsvp",     label:"RSVP",           id:d.rsvp });
-  if (S.env){    list.push({ key:"envFront", label:"Envelope front", id:ENVELOPES[f].front });
-                 list.push({ key:"envBack",  label:"Envelope back",  id:ENVELOPES[f].back }); }
-  if (S.liner)   list.push({ key:"liner",    label:"Liner",          id:d.liner[f] });
+  if (S.env){    list.push({ key:"envFront", label:"Envelope front", id:E[f].front });
+                 list.push({ key:"envBack",  label:"Envelope back",  id:E[f].back }); }
+  if (S.liner)   list.push({ key:"liner",    label:"Liner",          id:linerId() });
   return list;
+}
+// Fixed paper colour for the piece being edited (envelope paper always;
+// cards only on coloured stock). Locks the editor's background picker.
+function pieceBg(key){
+  if (key==="envFront" || key==="envBack") return envColour().hex;
+  if (["invite","back","details","rsvp"].includes(key) && cardBgLocked()) return cardColour().hex;
+  return null;
 }
 function currentTemplate(){
   const p = pieceList().find(p => p.key===S.piece);
@@ -694,7 +727,8 @@ function loadFrame(){
     $("suiteview").classList.remove("on");
     $("frame").style.display = "";
     const id = currentTemplate();
-    $("frame").src = tmplUrl(id);
+    const bg = pieceBg(S.piece);
+    $("frame").src = tmplUrl(id) + (bg ? "&bg="+bg.slice(1)+"&lockbg=1" : "");
     $("urltxt").textContent = "/design/" + id;
   }
   $("specsub").textContent = DESIGNS[S.design].sub;
@@ -708,28 +742,31 @@ const MOCK = {
   a6l:      { aspect:1.3617, paper:[0.0502,0.0684,0.8996,0.8632] },
   a6p:      { aspect:0.7344, paper:[0.0684,0.0502,0.8632,0.8996] },
 };
-const colourSlug = () => S.envColour.toLowerCase().replace(/[^a-z0-9]+/g,"-");
 // One mock piece: photo base + live design iframe printed on the paper rect.
 function mockPiece(p, base, geo, width, opts){
   opts = opts || {};
   const g = MOCK[geo], r = g.paper;
+  // Non-liner overlays stay on a white canvas: multiply blending prints
+  // only the ink onto the (already coloured) paper photo beneath.
   const overlay = opts.linerMask
-    ? '<iframe class="linr" loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+cmykToHex(envColour().cmyk).slice(1)+'" title="'+p.label+'"></iframe>'
+    ? '<div class="linrwrap"><iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
     : '<iframe loading="lazy" style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
       + 'src="'+tmplUrl(p.id)+'&preview=1" title="'+p.label+'"></iframe>';
   const aspect = opts.aspect || g.aspect;
   return '<div class="svp" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
     + '<div class="mock" style="width:'+width+'px;aspect-ratio:'+aspect+'">'
-    + '<img src="/demo/mockup/'+base+'.jpg" alt="">' + overlay
+    + '<img src="/demo/mockup/'+base+'.webp" alt="">' + overlay
     + '</div><b>'+p.label+'</b><span>'+p.id
-    + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')+'</span></div>';
+    + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')
+    + (opts.cardCol ? ' · '+S.cardColour : '')+'</span></div>';
 }
 function renderSuiteView(){
-  // Kate's photographic flat-lay, recoloured to the chosen envelope stock,
+  // Kate's photographic flat-lay, recoloured to the chosen paper stocks,
   // with the real templates rendered live onto each paper.
-  const slug = colourSlug();
-  const cardBase = "card-a5";                      // stretched for 5×7 / square
-  const a6base = S.design==="o2" ? "card-a6p" : "card-a6l";
+  const slug = slugName(S.envColour);
+  const cardSlug = S.card==="colour" ? slugName(S.cardColour) : (S.card==="cream" ? "cream" : "white");
+  const cardOpts = S.card==="colour" ? {cardCol:true} : {};
+  const a6base = (S.design==="o2" ? "card-a6p-" : "card-a6l-") + cardSlug;
   const a6geo  = S.design==="o2" ? "a6p" : "a6l";
   // Container aspect that keeps the design at its true print ratio: the
   // paper rect is a fixed fraction of the crop, so scale by its fractions.
@@ -744,8 +781,8 @@ function renderSuiteView(){
         case "envFront": return mockPiece(p, "envfront-"+slug, "envfront", 330, {env:true});
         case "envBack":  return mockPiece(p, "envback-"+slug,  "envback",  330, {env:true});
         case "details":
-        case "rsvp":     return mockPiece(p, a6base, a6geo, S.design==="o2" ? 190 : 260);
-        default:         return mockPiece(p, cardBase, "a5", cardW, {aspect: cardAspect});
+        case "rsvp":     return mockPiece(p, a6base, a6geo, S.design==="o2" ? 190 : 260, cardOpts);
+        default:         return mockPiece(p, "card-a5-"+cardSlug, "a5", cardW, Object.assign({aspect: cardAspect}, cardOpts));
       }
     }).join("") + '</div>';
 }
@@ -756,6 +793,8 @@ function pickEnvColour(name){
   else renderPieces();
 }
 function buildSpec(){
+  $("opt-design").innerHTML = Object.keys(DESIGNS).map(k =>
+    '<button class="opt'+(S.design===k?' on':'')+'" onclick="pickDesign(\''+k+'\')">'+DESIGNS[k].label+'</button>').join("");
   $("opt-size").innerHTML = SIZES.map(s =>
     '<button class="opt'+(S.size===s.key?' on':'')+'" onclick="pickSize(\''+s.key+'\')">'+s.label+'<span class="d">'+s.d+'</span></button>').join("");
   $("opt-card").innerHTML = CARDS.map(c => {
@@ -763,6 +802,17 @@ function buildSpec(){
     return '<button class="opt'+(S.card===c.key?' on':'')+'" onclick="pickCard(\''+c.key+'\')">'+c.label+
            (d?'<span class="d">+'+money(d)+'</span>':'')+'</button>';
   }).join("");
+  const cardWrap = $("cardcol");
+  if (S.card==="colour"){
+    cardWrap.classList.add("on");
+    cardWrap.innerHTML =
+      '<div class="swrow">' +
+      PALETTE.map(c =>
+        '<button class="swb'+(c.name===S.cardColour?' on':'')+'" style="background:'+c.hex+'" '
+        + 'title="'+c.name+'" onclick="pickCardColour(\''+c.name+'\')"></button>').join("") +
+      '</div><div class="swname">'+S.cardColour+' 300gsm</div>';
+    $("carddesc").textContent = "Changes the design — background prints the card colour";
+  } else { cardWrap.classList.remove("on"); cardWrap.innerHTML=""; $("carddesc").textContent = "Price only"; }
   $("opt-qty").innerHTML = QTYS.map(q =>
     '<button class="opt'+(S.qty===q?' on':'')+'" onclick="pickQty('+q+')">'+q+'</button>').join("");
   const colWrap = $("envcol");
@@ -771,10 +821,11 @@ function buildSpec(){
     colWrap.innerHTML =
       '<label>Envelope colour</label><div class="swrow">' +
       ENVELOPE_COLOURS.map(c =>
-        '<button class="swb'+(c.name===S.envColour?' on':'')+'" style="background:'+cmykToHex(c.cmyk)+'" '
+        '<button class="swb'+(c.name===S.envColour?' on':'')+'" style="background:'+c.hex+'" '
         + 'title="'+c.name+'" onclick="pickEnvColour(\''+c.name+'\')"></button>').join("") +
       '</div><div class="swname">'+S.envColour+' · '+flapLabel()+'</div>';
   } else { colWrap.classList.remove("on"); colWrap.innerHTML=""; }
+  $("envdesc").textContent = "Swan Lake front and back, " + ENVELOPES[S.size].label;
   $("linerdesc").textContent = flapLabel() + ", full bleed";
   document.querySelectorAll(".tog").forEach(b=>{
     const k=b.dataset.add;
@@ -797,8 +848,25 @@ function pickSize(k){
   setTimeout(()=>$("sizewarn").classList.remove("on"), 5200);
   loadFrame();
 }
-function pickCard(k){ S.card=k; buildSpec(); }
+function pickDesign(k){
+  if (S.design===k) return;
+  S.design=k; buildSpec(); loadFrame();
+}
+function pickCard(k){
+  if (S.card===k) return;
+  const wasLocked = cardBgLocked();
+  S.card=k; buildSpec();
+  // Stock changes reload the design only when the paper colour changes.
+  if (cardBgLocked() || wasLocked) loadFrame(); else renderPieces();
+}
+function pickCardColour(name){
+  S.cardColour=name; buildSpec();
+  if (["invite","back","details","rsvp","overview"].includes(S.piece)) loadFrame();
+  else renderPieces();
+}
 function pickQty(q){ S.qty=q; buildSpec(); }
+// Coloured card stock fixes the canvas background in the editor.
+function cardBgLocked(){ return S.card==="colour"; }
 function flashFrame(kind){
   // Each add-on is its own template in the editor — load the piece she just
   // added (or fall back after removing it) and note it in the mock URL bar.
@@ -844,11 +912,11 @@ function openSuite(){
   setStep(3);
   const d = DESIGNS[S.design], f = envFlap();
   const pieces = [
-    { id:d.invite[S.size],   n:"Invitation" },
-    { id:d.details,          n:"Details card" },
-    { id:d.rsvp,             n:"RSVP card" },
-    { id:ENVELOPES[f].front, n:"Envelope" },
-    { id:d.liner[f],         n:"Liner" },
+    { id:d.invite[S.size],            n:"Invitation" },
+    { id:d.details,                   n:"Details card" },
+    { id:d.rsvp,                      n:"RSVP card" },
+    { id:ENVELOPES[S.size][f].front,  n:"Envelope" },
+    { id:linerId(),                   n:"Liner" },
   ];
   $("suitegrid").innerHTML = pieces.map(p =>
       '<div class="pc"><div class="t">'
@@ -923,7 +991,7 @@ function renderSummary(){
     ["Entry", "Ad → /design/" + d.invite[S.size] + " (design first, no product page)"],
     ["Design", "Swan Lake " + d.label + " · template " + currentTemplate()],
     ["Size", SIZES.find(s=>s.key===S.size).label],
-    ["Card", CARDS.find(c=>c.key===S.card).label],
+    ["Card", CARDS.find(c=>c.key===S.card).label + (S.card==="colour" ? " — "+S.cardColour : "")],
     ["Added", [S.back&&"double sided", S.details&&"details card", S.rsvp&&"RSVP card",
                S.env&&("printed envelope front + back — "+S.envColour+", "+flapLabel()),
                S.liner&&"liner"].filter(Boolean).join(", ") || "nothing"],
@@ -944,9 +1012,10 @@ function renderSummary(){
           type:"linenSignAddToCart",
           variant:"demo-"+currentTemplate(),
           summary: d.label + " invitation (" + SIZES.find(s=>s.key===S.size).label + ")",
-          spec:{ size:S.size, card:S.card, qty:S.qty, doubleSided:S.back,
-                 details:S.details, rsvp:S.rsvp,
-                 envelope:S.env ? { colour:S.envColour, flap:envFlap() } : false,
+          spec:{ size:S.size,
+                 card:{ stock:S.card, colour: S.card==="colour" ? S.cardColour : null },
+                 qty:S.qty, doubleSided:S.back, details:S.details, rsvp:S.rsvp,
+                 envelope:S.env ? { colour:S.envColour, size:ENVELOPES[S.size].label, flap:envFlap() } : false,
                  liner:S.liner, suite:S.suite },
           totals:{ unit:+unitPrice().toFixed(2), total:+t.total.toFixed(2) }
         }
