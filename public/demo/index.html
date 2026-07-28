@@ -117,6 +117,17 @@ h1.big em{font-weight:300}
 .urlbar span{opacity:.6}
 .urlbar b{font-weight:400;color:var(--lilac)}
 .framewrap iframe{margin-top:24px;height:calc(100% - 24px)}
+.piecebar{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:6;
+  display:flex;gap:4px;background:var(--white);border:1px solid var(--line);
+  border-radius:40px;padding:5px 6px;box-shadow:0 8px 26px rgba(69,28,34,.14);
+}
+.pt{
+  border:none;background:none;color:var(--plum-soft);padding:6px 13px;border-radius:40px;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:400;transition:.15s;
+}
+.pt:hover:not(.on){background:var(--cream-deep)}
+.pt.on{background:var(--plum);color:var(--cream)}
 
 .spec{background:var(--cream);border-left:1px solid var(--line);overflow-y:auto;padding:20px 22px 40px}
 .spec h2{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;color:var(--plum);line-height:1.15}
@@ -316,6 +327,7 @@ pre.payload{
   <div class="framewrap">
     <div class="urlbar"><span>signhustle.com.au</span><b id="urltxt">/design/sw12</b><span id="urlnote">— real editor, real Swan Lake template</span></div>
     <iframe id="frame" title="Editor"></iframe>
+    <div class="piecebar" id="piecebar"></div>
   </div>
 
   <aside class="spec">
@@ -517,7 +529,7 @@ const QTYS = [25,50,75,100,150];
 /* ── State ──────────────────────────────────────────────────────── */
 const S = {
   design:"o1", size:"a5", card:"matte", qty:50,
-  back:false, env:false, liner:false,
+  back:false, env:false, liner:false, piece:"invite",
   suite:false, path:null, email:null, cartPayload:null,
 };
 const STEPS = ["00 Ad","01 Edit","02 Specify","03 Suite","04 Fork","05 Email","06 Cart"];
@@ -557,18 +569,45 @@ $("picks").innerHTML = Object.entries(DESIGNS).map(([k,d]) => {
 function go(id, designKey){
   if (designKey) S.design = designKey;
   S.size="a5"; S.card="matte"; S.qty=50; S.back=false; S.env=false; S.liner=false; S.suite=false;
+  S.piece="invite";
   show("s-edit"); setStep(1);
   buildSpec();
   loadFrame();
 }
 
 /* ── 01–02 Editor + spec ────────────────────────────────────────── */
-function currentTemplate(){ return DESIGNS[S.design].invite[S.size]; }
+// Every selected piece is a tab at the bottom of the editor, so she can
+// switch between the designs in her order at any time.
+function pieceList(){
+  const d = DESIGNS[S.design];
+  const list = [ { key:"invite", label:"Invitation", id:d.invite[S.size] } ];
+  if (S.back)  list.push({ key:"back",  label:"Back",     id:d.back[S.size] });
+  if (S.env)   list.push({ key:"env",   label:"Envelope", id:d.env });
+  if (S.liner) list.push({ key:"liner", label:"Liner",    id:d.liner });
+  return list;
+}
+function currentTemplate(){
+  const p = pieceList().find(p => p.key===S.piece);
+  return (p || pieceList()[0]).id;
+}
+function renderPieces(){
+  const list = pieceList();
+  if (!list.some(p => p.key===S.piece)) S.piece = "invite";
+  $("piecebar").innerHTML = list.map(p =>
+    '<button class="pt'+(S.piece===p.key?' on':'')+'" onclick="setPiece(\''+p.key+'\')">'+p.label+'</button>').join("");
+}
+function setPiece(k){
+  if (S.piece===k) return;
+  S.piece = k;
+  renderPieces();
+  loadFrame();
+}
 function loadFrame(){
   const id = currentTemplate();
   $("frame").src = tmplUrl(id);
   $("urltxt").textContent = "/design/" + id;
   $("specsub").textContent = DESIGNS[S.design].sub;
+  renderPieces();
 }
 function buildSpec(){
   $("opt-size").innerHTML = SIZES.map(s =>
@@ -584,7 +623,12 @@ function buildSpec(){
     const k=b.dataset.add;
     b.classList.toggle("on", S[k]);
     $("px-"+k).textContent = "+"+money(PRICING.addons[k]);
-    b.onclick = ()=>{ S[k]=!S[k]; buildSpec(); price(); if(k!=="back") flashFrame(k); };
+    b.onclick = ()=>{
+      S[k]=!S[k];
+      // Adding a piece jumps the editor to it; removing the one on screen falls back.
+      if (S[k]) S.piece = k; else if (S.piece===k) S.piece = "invite";
+      buildSpec(); price(); flashFrame(k);
+    };
   });
   price();
 }
@@ -598,14 +642,13 @@ function pickSize(k){
 function pickCard(k){ S.card=k; buildSpec(); }
 function pickQty(q){ S.qty=q; buildSpec(); }
 function flashFrame(kind){
-  // Envelope / liner are separate templates in the editor — show the piece she just added.
-  const d = DESIGNS[S.design];
-  const id = kind==="env" ? d.env : d.liner;
-  if (!S[kind]) { loadFrame(); return; }
-  $("frame").src = tmplUrl(id);
-  $("urltxt").textContent = "/design/" + id;
-  $("urlnote").textContent = "— the piece she just added, same collection";
-  setTimeout(()=>{ $("urlnote").textContent = "— real editor, real Swan Lake template"; }, 4000);
+  // Each add-on is its own template in the editor — load the piece she just
+  // added (or fall back after removing it) and note it in the mock URL bar.
+  loadFrame();
+  if (S[kind]) {
+    $("urlnote").textContent = "— the piece she just added, same collection";
+    setTimeout(()=>{ $("urlnote").textContent = "— real editor, real Swan Lake template"; }, 4000);
+  }
 }
 
 function unitPrice(){
@@ -760,7 +803,7 @@ window.addEventListener("message", e => {
 
 function restart(){
   S.design="o1"; S.size="a5"; S.card="matte"; S.qty=50;
-  S.back=S.env=S.liner=S.suite=false; S.path=null; S.email=null; S.cartPayload=null;
+  S.back=S.env=S.liner=S.suite=false; S.piece="invite"; S.path=null; S.email=null; S.cartPayload=null;
   document.querySelectorAll(".ov").forEach(o=>o.classList.remove("on"));
   show("s-ad"); setStep(0);
 }
