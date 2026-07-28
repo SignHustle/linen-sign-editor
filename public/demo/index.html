@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign Hustle Co — Flow Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --plum:#451c22; --ink:#3C1B26; --plum-soft:#7a4a52;
+  --cream:#f7f0e8; --cream-deep:#efe4d8; --lilac:#D5CAE0; --lilac-deep:#c0b0cf;
+  --white:#fffcf9; --line:rgba(69,28,34,.16); --sage:#6f7f63; --amber:#c98a3f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--cream);color:var(--ink);
+  font-family:'Jost',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:300;
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+.serif{font-family:'Cormorant Garamond',Georgia,serif}
+em{font-style:italic}
+button{font-family:inherit;cursor:pointer}
+
+/* ── Demo chrome ────────────────────────────────────────── */
+#demobar{
+  position:fixed;bottom:0;left:0;right:0;z-index:900;
+  background:var(--plum);color:var(--cream);
+  display:flex;align-items:center;gap:14px;padding:9px 18px;
+  font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+}
+#demobar .badge{
+  background:var(--amber);color:#2b1608;padding:3px 9px;border-radius:40px;
+  font-size:9.5px;letter-spacing:.12em;font-weight:500;
+}
+#demobar .steps{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+#demobar .st{
+  padding:3px 10px;border-radius:40px;border:1px solid rgba(247,240,232,.28);
+  color:rgba(247,240,232,.6);font-size:9.5px;letter-spacing:.1em;
+}
+#demobar .st.on{background:var(--lilac);color:var(--plum);border-color:var(--lilac)}
+#demobar .st.done{color:rgba(247,240,232,.9);border-color:rgba(247,240,232,.55)}
+#demobar .restart{
+  background:none;border:1px solid rgba(247,240,232,.4);color:var(--cream);
+  padding:5px 14px;border-radius:40px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+}
+#demobar .restart:hover{background:rgba(247,240,232,.12)}
+
+.screen{position:fixed;inset:0 0 40px 0;overflow-y:auto;display:none}
+.screen.on{display:block}
+
+/* ── 00 Ad ──────────────────────────────────────────────── */
+#s-ad{background:var(--cream)}
+.adwrap{max-width:1080px;margin:0 auto;padding:40px 28px 60px;text-align:center}
+.eyebrow{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--plum-soft);margin-bottom:16px}
+h1.big{font-family:'Cormorant Garamond',Georgia,serif;font-weight:400;font-size:clamp(30px,4.6vw,50px);line-height:1.08;color:var(--plum)}
+h1.big em{font-weight:300}
+.lead{max-width:620px;margin:16px auto 0;font-size:14.5px;color:var(--plum-soft)}
+.phone{
+  max-width:340px;margin:34px auto 0;background:var(--white);border:1px solid var(--line);
+  border-radius:22px;overflow:hidden;box-shadow:0 12px 44px rgba(69,28,34,.1);text-align:left;
+}
+.phone .hd{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.phone .av{width:26px;height:26px;border-radius:50%;background:var(--lilac);flex:none}
+.phone .hd b{font-size:12px;font-weight:500;color:var(--plum);display:block;line-height:1.2}
+.phone .hd span{font-size:10px;color:var(--plum-soft)}
+.phone .art{background:var(--cream-deep);aspect-ratio:4/5;display:flex;align-items:center;justify-content:center;padding:20px}
+/* Faithful mini render of sw12, using the same font files the editor loads. */
+@font-face{font-family:MozartDemo;src:url("/MozartScript-Regular.otf");font-display:swap}
+@font-face{font-family:DubielDemo;src:url("/DUBIEL.TTF");font-display:swap}
+.mini{
+  position:relative;background:#fff;height:100%;aspect-ratio:148/210;
+  box-shadow:0 6px 22px rgba(69,28,34,.16);display:flex;align-items:center;justify-content:center;
+}
+.mini .bd{position:absolute;inset:5.5% 6%;border:1px solid #1a1a1a;box-shadow:0 0 0 2px #fff,0 0 0 3px #1a1a1a}
+.mini .in{position:relative;text-align:center;color:#000;padding:0 12%;width:100%}
+.mini .top{font-family:DubielDemo,Georgia,serif;font-size:5.1px;letter-spacing:.9px;line-height:2;margin-bottom:9%}
+.mini .names{font-family:MozartDemo,'Cormorant Garamond',serif;font-size:30px;line-height:.82;white-space:nowrap}
+.mini .names .sm{font-family:DubielDemo,Georgia,serif;font-size:12px;letter-spacing:.6px;vertical-align:.32em}
+.mini .amp{font-size:19px;display:block;margin:-2px 0}
+.mini .dt{font-family:MozartDemo,'Cormorant Garamond',serif;font-size:13px;margin-top:11%}
+.mini .ft{font-family:DubielDemo,Georgia,serif;font-size:4.6px;letter-spacing:.8px;line-height:2.1;margin-top:9%}
+.phone .cap{padding:13px 15px 16px;font-size:12.5px;color:var(--ink)}
+.phone .cta{
+  display:block;width:100%;background:#121212;color:#F3F3F3;border:none;
+  padding:13px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+}
+.picks{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+.pick{
+  background:var(--white);border:1px solid var(--line);border-radius:16px;padding:12px 14px;
+  width:150px;text-align:center;transition:.18s;
+}
+.pick:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(69,28,34,.1)}
+.pick .thumb{background:var(--cream-deep);border-radius:8px;aspect-ratio:3/4;margin-bottom:9px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.pick .thumb img{width:100%;height:100%;object-fit:contain;padding:8px}
+.pick b{display:block;font-size:12.5px;font-weight:400;color:var(--plum);font-family:'Cormorant Garamond',serif;font-size:16px}
+.pick span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--plum-soft)}
+.note{
+  max-width:660px;margin:34px auto 0;background:var(--lilac);border-radius:16px;padding:16px 20px;
+  font-size:12.5px;color:var(--plum);text-align:left;
+}
+.note b{font-weight:500}
+
+/* ── 01 Editor + spec ───────────────────────────────────── */
+#s-edit{display:none}
+#s-edit.on{display:grid;grid-template-columns:1fr 348px}
+@media(max-width:900px){#s-edit.on{grid-template-columns:1fr}}
+#frame{width:100%;height:100%;border:none;background:var(--white)}
+.framewrap{position:relative;height:100%;background:var(--white)}
+.urlbar{
+  position:absolute;top:0;left:0;right:0;z-index:5;background:var(--plum);color:var(--cream);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;
+  padding:5px 12px;display:flex;align-items:center;gap:8px;
+}
+.urlbar span{opacity:.6}
+.urlbar b{font-weight:400;color:var(--lilac)}
+.framewrap iframe{margin-top:24px;height:calc(100% - 24px)}
+
+.spec{background:var(--cream);border-left:1px solid var(--line);overflow-y:auto;padding:20px 22px 40px}
+.spec h2{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;color:var(--plum);line-height:1.15}
+.spec h2 em{font-weight:300}
+.spec .sub{font-size:11.5px;color:var(--plum-soft);margin:2px 0 18px}
+.grp{margin-bottom:18px}
+.grp>label{
+  display:block;font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;
+  color:var(--plum-soft);margin-bottom:8px;
+}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{
+  border:1px solid var(--line);background:var(--white);color:var(--ink);
+  padding:7px 12px;border-radius:40px;font-size:11.5px;font-weight:300;transition:.15s;
+}
+.opt:hover{border-color:var(--plum-soft)}
+.opt.on{background:var(--plum);color:var(--cream);border-color:var(--plum)}
+.opt .d{opacity:.62;font-size:10.5px;margin-left:5px}
+.opt.on .d{opacity:.75}
+.tog{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  border:1px solid var(--line);background:var(--white);border-radius:12px;
+  padding:10px 13px;margin-bottom:6px;width:100%;text-align:left;
+}
+.tog.on{background:var(--lilac);border-color:var(--lilac-deep)}
+.tog b{display:block;font-size:12.5px;font-weight:400;color:var(--plum)}
+.tog i{font-style:normal;display:block;font-size:10.5px;color:var(--plum-soft);margin-top:1px}
+.tog .px{font-size:11.5px;color:var(--plum);white-space:nowrap}
+.tog .sw{width:32px;height:18px;border-radius:40px;background:rgba(69,28,34,.16);position:relative;flex:none;transition:.15s}
+.tog.on .sw{background:var(--plum)}
+.tog .sw:after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--white);transition:.15s}
+.tog.on .sw:after{left:16px}
+.affects{
+  font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--amber);margin-top:6px;display:block;
+}
+.total{
+  background:var(--white);border:1px solid var(--line);border-radius:16px;padding:15px 16px;margin-top:6px;
+}
+.row{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;color:var(--plum-soft)}
+.row.grand{
+  border-top:1px solid var(--line);margin-top:8px;padding-top:10px;
+  font-size:15px;color:var(--plum);
+}
+.row.grand b{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;line-height:1}
+.perpiece{font-size:11px;color:var(--plum-soft);text-align:right;margin-top:2px}
+.cont{
+  width:100%;background:#121212;color:#F3F3F3;border:none;padding:14px;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-top:14px;
+}
+.cont:hover{background:#2a2a2a}
+.hint{font-size:10.5px;color:var(--plum-soft);text-align:center;margin-top:9px;line-height:1.5}
+.warn{
+  background:rgba(201,138,63,.14);border:1px solid rgba(201,138,63,.4);border-radius:10px;
+  padding:9px 11px;font-size:11px;color:#7a5220;margin-top:10px;display:none;
+}
+.warn.on{display:block}
+
+/* ── Overlays ───────────────────────────────────────────── */
+.ov{
+  position:fixed;inset:0;z-index:800;background:rgba(69,28,34,.42);backdrop-filter:blur(7px);
+  display:none;align-items:center;justify-content:center;padding:28px;overflow-y:auto;
+}
+.ov.on{display:flex}
+.card{
+  background:var(--cream);border-radius:24px;max-width:940px;width:100%;
+  padding:34px 38px;box-shadow:0 30px 90px rgba(0,0,0,.28);margin:auto;
+}
+.card.sm{max-width:460px;padding:36px 34px}
+.card h3{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,3.4vw,36px);font-weight:500;color:var(--plum);line-height:1.12}
+.card h3 em{font-weight:300}
+.card .k{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--plum-soft);margin-bottom:10px}
+.card p{font-size:14px;color:var(--ink);margin-top:10px}
+.suite{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:22px 0 6px}
+@media(max-width:720px){.suite{grid-template-columns:repeat(3,1fr)}}
+.pc{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:9px;text-align:center}
+.pc .t{background:var(--cream-deep);border-radius:6px;aspect-ratio:3/4;margin-bottom:7px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;position:relative;padding:7px}
+.pc .t img{width:100%;height:100%;object-fit:contain}
+.pc .t .ghosted{
+  width:100%;height:100%;border:1px solid rgba(69,28,34,.28);
+  box-shadow:inset 0 0 0 2px var(--cream-deep), inset 0 0 0 3px rgba(69,28,34,.16);
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--plum-soft);
+  padding:6px;line-height:1.2;
+}
+.save{
+  display:inline-block;background:var(--lilac);color:var(--plum);
+  padding:4px 11px;border-radius:40px;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;margin-top:10px;
+}
+.strike{text-decoration:line-through;opacity:.6}
+.pc b{display:block;font-size:11px;font-weight:400;color:var(--plum)}
+.pc span{font-size:9.5px;color:var(--plum-soft)}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+@media(max-width:720px){.compare{grid-template-columns:1fr}}
+.ch{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:var(--white)}
+.ch.hero{background:var(--plum);color:var(--cream);border-color:var(--plum)}
+.ch .lbl{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.72;margin-bottom:6px}
+.ch .amt{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:500;line-height:1}
+.ch .per{font-size:11.5px;opacity:.75;margin-top:4px}
+.ch button{width:100%;margin-top:14px;padding:12px;border:none;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase}
+.ch.hero button{background:var(--lilac);color:var(--plum)}
+.ch button.ghost{background:none;border:1px solid var(--line);color:var(--ink)}
+.declined{text-align:center;margin-top:14px}
+.declined button{background:none;border:none;color:var(--plum-soft);font-size:11.5px;text-decoration:underline;letter-spacing:.04em}
+
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+@media(max-width:720px){.fork{grid-template-columns:1fr}}
+.fk{border:1px solid var(--line);border-radius:18px;padding:22px 24px;background:var(--white)}
+.fk.dark{background:var(--plum);color:var(--cream);border-color:var(--plum)}
+.fk h4{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;margin-bottom:6px;color:var(--plum)}
+.fk.dark h4{color:var(--cream)}
+.fk h4 em{font-weight:300}
+.fk ul{list-style:none;font-size:12.5px;margin:10px 0 0}
+.fk li{padding:2.5px 0 2.5px 14px;position:relative}
+.fk li:before{content:"–";position:absolute;left:0;opacity:.5}
+.fk .amt{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:500;line-height:1;margin-top:8px}
+.fk button{width:100%;margin-top:16px;padding:13px;border:none;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;background:#121212;color:#F3F3F3}
+.fk.dark button{background:var(--lilac);color:var(--plum)}
+.credit{
+  background:var(--lilac);border-radius:16px;padding:18px 22px;margin-top:16px;text-align:center;
+}
+.credit .big2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--plum);line-height:1.25}
+.credit .big2 em{font-weight:300}
+.credit p{font-size:12px;color:var(--plum-soft);margin-top:7px}
+
+.fld{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--white);
+  font-family:inherit;font-size:14px;color:var(--ink);margin-top:14px;font-weight:300}
+.fld:focus{outline:none;border-color:var(--plum)}
+.prim{width:100%;background:#121212;color:#F3F3F3;border:none;padding:13px;font-size:10.5px;
+  letter-spacing:.18em;text-transform:uppercase;margin-top:10px}
+.guest{width:100%;background:none;border:1px solid var(--line);color:var(--ink);padding:12px;
+  font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;margin-top:8px}
+.tiny{font-size:10.5px;color:var(--plum-soft);margin-top:12px;text-align:center;line-height:1.5}
+
+/* ── 05 Summary ─────────────────────────────────────────── */
+#s-done{background:var(--cream)}
+.donewrap{max-width:820px;margin:0 auto;padding:48px 28px 60px}
+.kv{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:22px 26px;margin-top:20px}
+.kv .l{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid rgba(69,28,34,.07);font-size:13px}
+.kv .l:last-child{border-bottom:none}
+.kv .l b{font-weight:400;color:var(--plum-soft);flex:none}
+.kv .l span{text-align:right}
+pre.payload{
+  background:var(--plum);color:#e8dcd0;border-radius:14px;padding:16px 18px;margin-top:16px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;line-height:1.6;
+  overflow-x:auto;white-space:pre-wrap;word-break:break-word;max-height:230px;overflow-y:auto;
+}
+.divider{text-align:center;color:var(--lilac-deep);letter-spacing:.6em;margin:34px 0}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 00 · THE AD ═══════════ -->
+<section class="screen on" id="s-ad">
+  <div class="adwrap">
+    <div class="eyebrow">Step 00 · She sees the ad</div>
+    <h1 class="big">She never lands on a product page.<br><em>She lands on the design.</em></h1>
+    <p class="lead">This is the whole premise. The ad links to one design, and clicking it opens the real editor with that design already loaded. No size dropdown, no material picker, no gallery in between.</p>
+
+    <div class="phone">
+      <div class="hd"><div class="av"></div><div><b>signhustleco</b><span>Sponsored</span></div></div>
+      <div class="art">
+        <div class="mini">
+          <div class="bd"></div>
+          <div class="in">
+            <div class="top">PLEASE JOIN US<br>TO CELEBRATE THE MARRIAGE OF</div>
+            <div class="names">
+              M<span class="sm">ONIQUE</span>
+              <span class="amp">&amp;</span>
+              J<span class="sm">AMES</span>
+            </div>
+            <div class="dt">12 October 2025</div>
+            <div class="ft">REDLEAF WOLLOMBI<br>CEREMONY COMMENCES AT 4PM<br>RSVP BY 12 AUGUST 2025<br>BLACK TIE</div>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>Swan Lake</b> — put your own names on it before you buy. Free to try. ✦</div>
+      <button class="cta" onclick="go('sw12')">Personalise this design →</button>
+    </div>
+
+    <div class="eyebrow" style="margin-top:40px">Or pick another Swan Lake design</div>
+    <div class="picks" id="picks"></div>
+
+    <div class="note">
+      <b>What is real here:</b> the editor below is your actual app with the real Swan Lake templates,
+      loaded over <code>?template=sw12</code> — the deep-link parameter added on the <code>flow-demo</code> branch.
+      The spec panel, prices, suite offer and email gate are the mock-up.
+      <b>Prices are placeholders</b> until the pricing master is wired in.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 01–02 · EDIT + SPEC ═══════════ -->
+<section class="screen" id="s-edit">
+  <div class="framewrap">
+    <div class="urlbar"><span>signhustle.com.au</span><b id="urltxt">/design/sw12</b><span id="urlnote">— real editor, real Swan Lake template</span></div>
+    <iframe id="frame" title="Editor"></iframe>
+  </div>
+
+  <aside class="spec">
+    <h2>Your <em>invitation</em></h2>
+    <div class="sub" id="specsub">Swan Lake · Option 1</div>
+
+    <div class="grp">
+      <label>Size</label>
+      <div class="opts" id="opt-size"></div>
+      <span class="affects">Changes the design</span>
+      <div class="warn" id="sizewarn">
+        Reloading the design to swap size. In your editor each size is a separate template,
+        so typed text does not carry across yet. This is friction #4 in the process doc.
+      </div>
+    </div>
+
+    <div class="grp">
+      <label>Card</label>
+      <div class="opts" id="opt-card"></div>
+      <span class="affects" style="color:var(--plum-soft)">Price only</span>
+    </div>
+
+    <div class="grp">
+      <label>Add to it</label>
+      <button class="tog" data-add="back"><span><b>Double sided</b><i>A back you can put a map or a poem on</i></span><span class="px" id="px-back"></span><span class="sw"></span></button>
+      <button class="tog" data-add="env"><span><b>Printed envelope</b><i>Swan Lake envelope, C5 landscape</i></span><span class="px" id="px-env"></span><span class="sw"></span></button>
+      <button class="tog" data-add="liner"><span><b>Envelope liner</b><i>Euro flap, full bleed</i></span><span class="px" id="px-liner"></span><span class="sw"></span></button>
+      <span class="affects">Changes the design</span>
+    </div>
+
+    <div class="grp">
+      <label>Quantity <span style="text-transform:none;letter-spacing:0">(minimum 25)</span></label>
+      <div class="opts" id="opt-qty"></div>
+    </div>
+
+    <div class="total">
+      <div class="row"><span id="lbl-base">Invitation ×50</span><span id="v-base"></span></div>
+      <div class="row" id="r-extras" style="display:none"><span>Add-ons</span><span id="v-extras"></span></div>
+      <div class="row"><span>Delivery, Australia wide</span><span id="v-ship"></span></div>
+      <div class="row grand"><span>Total</span><b id="v-total"></b></div>
+      <div class="perpiece" id="v-per"></div>
+    </div>
+
+    <button class="cont" onclick="openSuite()">Continue →</button>
+    <div class="hint">Nothing new appears at checkout.<br>Every cost is on this panel.</div>
+  </aside>
+</section>
+
+<!-- ═══════════ 03 · SUITE ═══════════ -->
+<div class="ov" id="ov-suite">
+  <div class="card">
+    <div class="k">Step 03 · The suite moment, after she has seen one price</div>
+    <h3>Your details are <em>already on all of them.</em></h3>
+    <p>Same collection, same names, same date. Nothing to re-enter.</p>
+    <div class="suite" id="suitegrid"></div>
+    <div class="compare">
+      <div class="ch">
+        <div class="lbl">Just the invitation</div>
+        <div class="amt" id="sv-single"></div>
+        <div class="per">per guest</div>
+        <div class="per" id="sv-singletot" style="margin-top:8px"></div>
+        <button class="ghost" onclick="closeSuite(false)">Continue with one piece</button>
+      </div>
+      <div class="ch hero">
+        <div class="lbl">All five pieces</div>
+        <div class="amt" id="sv-suite"></div>
+        <div class="per">per guest, five pieces</div>
+        <div class="per" id="sv-suitetot" style="margin-top:8px"></div>
+        <div class="save" id="sv-save"></div>
+        <button onclick="closeSuite(true)">Add the whole suite</button>
+      </div>
+    </div>
+    <div class="declined"><button onclick="closeSuite(false)">No thanks, just this one</button></div>
+  </div>
+</div>
+
+<!-- ═══════════ 04 · FORK ═══════════ -->
+<div class="ov" id="ov-fork">
+  <div class="card">
+    <div class="k">Step 04 · One design, two ways to have it</div>
+    <h3>How would you like <em>your <span id="forkwhat">invitation</span>?</em></h3>
+    <div class="fork">
+      <div class="fk">
+        <h4>Download it <em>now</em></h4>
+        <p style="font-size:12.5px;color:var(--plum-soft)">Print-ready files, instantly.</p>
+        <div class="amt" id="fk-dl"></div>
+        <div style="font-size:11.5px;color:var(--plum-soft);margin-top:5px" id="fk-dlnote"></div>
+        <ul>
+          <li>Print at home or at any printer</li>
+          <li>Free watermarked preview first</li>
+          <li>Yours to reprint as many times as you like</li>
+        </ul>
+        <button onclick="openGate('download')">Download</button>
+      </div>
+      <div class="fk dark">
+        <h4>We print it <em>for you</em></h4>
+        <p style="font-size:12.5px;opacity:.8">Cotton card, envelopes, delivered.</p>
+        <div class="amt" id="fk-pr"></div>
+        <ul>
+          <li>Printed and posted Australia wide</li>
+          <li>Sample of your own design, credited back</li>
+          <li id="fk-qty"></li>
+        </ul>
+        <button onclick="openGate('print')">Order printing</button>
+      </div>
+    </div>
+    <div class="credit">
+      <div class="big2">Your download is <em>credited against printing</em> for twelve months.</div>
+      <p>She is not choosing download instead of print. She is choosing download now and print maybe.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 05 · EMAIL GATE ═══════════ -->
+<div class="ov" id="ov-gate">
+  <div class="card sm">
+    <div class="k">Step 05 · The only gate in the whole flow</div>
+    <h3>Send this design <em>to your inbox</em></h3>
+    <p style="font-size:13px;color:var(--plum-soft)">Come back to it any time. Send it to your fiancé, or your mum.</p>
+    <input class="fld" id="gate-email" type="email" placeholder="you@email.com" autocomplete="email">
+    <button class="prim" onclick="finish('account')">Send it to me</button>
+    <button class="guest" onclick="finish('guest')">Continue as a guest</button>
+    <div class="tiny">No password. No account form.<br>Guest checkout is never hidden behind this.</div>
+  </div>
+</div>
+
+<!-- ═══════════ 06 · SUMMARY ═══════════ -->
+<section class="screen" id="s-done">
+  <div class="donewrap">
+    <div class="eyebrow">Step 06 · What actually goes to Shopify</div>
+    <h1 class="big">That is the <em>whole journey.</em></h1>
+    <p class="lead" id="donelead" style="margin-left:0;text-align:left;max-width:100%"></p>
+    <div class="kv" id="summary"></div>
+    <div class="divider">✦ ✦ ✦</div>
+    <div class="eyebrow" style="text-align:left">Cart handoff payload</div>
+    <p style="font-size:12.5px;color:var(--plum-soft);margin-bottom:4px">
+      This is the real <code>linenSignAddToCart</code> message your editor posts to its parent frame,
+      caught by this page. In production it becomes Shopify line item properties.
+    </p>
+    <pre class="payload" id="payload"></pre>
+    <button class="cont" style="max-width:300px" onclick="restart()">Run it again</button>
+  </div>
+</section>
+
+<!-- ═══════════ Demo bar ═══════════ -->
+<div id="demobar">
+  <span class="badge">Demo</span>
+  <div class="steps" id="steps"></div>
+  <button class="restart" onclick="restart()">Restart</button>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   PLACEHOLDER PRICING — swap these for the pricing master figures.
+   Everything downstream is derived, so this object is the only edit.
+   ════════════════════════════════════════════════════════════════════ */
+const PRICING = {
+  currency: "$",
+  digitalSingle: 29,          // one design, print-ready file
+  digitalSuite:  69,          // whole matching suite  (2.4× single)
+  printBase:     3.20,        // per invitation at qty 50, signature card
+  card: { signature:0, cotton:1.10, pearl:0.60 },
+  addons: { back:0.80, env:0.90, liner:1.20 },
+  suiteExtraPerSet: 4.40,     // details + rsvp + envelope, per guest set
+  suitePrintDiscount: 0.18,   // 18% off when the whole suite is printed
+  qtyLadder: { 25:1.15, 50:1.00, 75:0.93, 100:0.88, 150:0.82 },
+  shipping: 14.95,
+  moq: 25,
+};
+
+/* ── Swan Lake template map, read straight out of App.jsx ────────── */
+const DESIGNS = {
+  o1: { label:"Option 1", sub:"Swan Lake · Option 1",
+        invite:{ a5:"sw12", "120x180":"sw16", "120x120":"sw20" },
+        back:  { a5:"sw13", "120x180":"sw17", "120x120":"sw21" },
+        details:"sw24", rsvp:"sw28", env:"sw32", liner:"sw50" },
+  o2: { label:"Option 2", sub:"Swan Lake · Option 2",
+        invite:{ a5:"sw14", "120x180":"sw18", "120x120":"sw22" },
+        back:  { a5:"sw15", "120x180":"sw19", "120x120":"sw23" },
+        details:"sw26", rsvp:"sw30", env:"sw34", liner:"sw55" },
+  o3: { label:"Option 3", sub:"Swan Lake · Option 3",
+        invite:{ a5:"sw36", "120x180":"sw38", "120x120":"sw41" },
+        back:  { a5:"sw37", "120x180":"sw39", "120x120":"sw40" },
+        details:"sw24", rsvp:"sw28", env:"sw32", liner:"sw57" },
+};
+const SIZES = [
+  { key:"a5",       label:"A5",     d:"148×210" },
+  { key:"120x180",  label:"5×7in",  d:"120×180" },
+  { key:"120x120",  label:"Square", d:"120×120" },
+];
+const CARDS = [
+  { key:"signature", label:"Signature 300gsm" },
+  { key:"cotton",    label:"Cotton 600gsm" },
+  { key:"pearl",     label:"Pearl shimmer" },
+];
+const QTYS = [25,50,75,100,150];
+
+/* ── State ──────────────────────────────────────────────────────── */
+const S = {
+  design:"o1", size:"a5", card:"signature", qty:50,
+  back:false, env:false, liner:false,
+  suite:false, path:null, email:null, cartPayload:null,
+};
+const STEPS = ["00 Ad","01 Edit","02 Specify","03 Suite","04 Fork","05 Email","06 Cart"];
+let stepIdx = 0;
+
+const $ = id => document.getElementById(id);
+// Thumbnails: border SVG → raster art → a styled card. Production would use
+// server-rendered previews of her actual edited design.
+function thumbFallback(img, id, name){
+  if (!img.dataset.tried) {
+    img.dataset.tried = "1";
+    img.src = "/raster/" + id + "-art0.png";
+    return;
+  }
+  img.outerHTML = '<div class="ghosted">' + name + '</div>';
+}
+const money = n => PRICING.currency + n.toFixed(2);
+const tmplUrl = id => "/?template=" + id + "&variant=demo-" + id;
+
+/* ── Demo bar ───────────────────────────────────────────────────── */
+function renderSteps(){
+  $("steps").innerHTML = STEPS.map((s,i) =>
+    '<span class="st '+(i===stepIdx?'on':(i<stepIdx?'done':''))+'">'+s+'</span>').join("");
+}
+function setStep(i){ stepIdx=i; renderSteps(); }
+function show(id){ document.querySelectorAll(".screen").forEach(e=>e.classList.remove("on")); $(id).classList.add("on"); }
+
+/* ── 00 Ad screen ───────────────────────────────────────────────── */
+function previewSrc(id){ return "/borders/"+id+"-border.svg"; }
+$("picks").innerHTML = Object.entries(DESIGNS).map(([k,d]) => {
+  const id = d.invite.a5;
+  return '<div class="pick" onclick="go(\''+id+'\',\''+k+'\')">'
+       + '<div class="thumb"><img src="'+previewSrc(id)+'" onerror="thumbFallback(this,\''+id+'\',\''+d.label+'\')" alt=""></div>'
+       + '<b>'+d.label+'</b><span>Invitation</span></div>';
+}).join("");
+
+function go(id, designKey){
+  if (designKey) S.design = designKey;
+  S.size="a5"; S.card="signature"; S.qty=50; S.back=false; S.env=false; S.liner=false; S.suite=false;
+  show("s-edit"); setStep(1);
+  buildSpec();
+  loadFrame();
+}
+
+/* ── 01–02 Editor + spec ────────────────────────────────────────── */
+function currentTemplate(){ return DESIGNS[S.design].invite[S.size]; }
+function loadFrame(){
+  const id = currentTemplate();
+  $("frame").src = tmplUrl(id);
+  $("urltxt").textContent = "/design/" + id;
+  $("specsub").textContent = DESIGNS[S.design].sub;
+}
+function buildSpec(){
+  $("opt-size").innerHTML = SIZES.map(s =>
+    '<button class="opt'+(S.size===s.key?' on':'')+'" onclick="pickSize(\''+s.key+'\')">'+s.label+'<span class="d">'+s.d+'</span></button>').join("");
+  $("opt-card").innerHTML = CARDS.map(c => {
+    const d = PRICING.card[c.key];
+    return '<button class="opt'+(S.card===c.key?' on':'')+'" onclick="pickCard(\''+c.key+'\')">'+c.label+
+           (d?'<span class="d">+'+money(d)+'</span>':'')+'</button>';
+  }).join("");
+  $("opt-qty").innerHTML = QTYS.map(q =>
+    '<button class="opt'+(S.qty===q?' on':'')+'" onclick="pickQty('+q+')">'+q+'</button>').join("");
+  document.querySelectorAll(".tog").forEach(b=>{
+    const k=b.dataset.add;
+    b.classList.toggle("on", S[k]);
+    $("px-"+k).textContent = "+"+money(PRICING.addons[k]);
+    b.onclick = ()=>{ S[k]=!S[k]; buildSpec(); price(); if(k!=="back") flashFrame(k); };
+  });
+  price();
+}
+function pickSize(k){
+  if (S.size===k) return;
+  S.size=k; buildSpec();
+  $("sizewarn").classList.add("on");
+  setTimeout(()=>$("sizewarn").classList.remove("on"), 5200);
+  loadFrame();
+}
+function pickCard(k){ S.card=k; buildSpec(); }
+function pickQty(q){ S.qty=q; buildSpec(); }
+function flashFrame(kind){
+  // Envelope / liner are separate templates in the editor — show the piece she just added.
+  const d = DESIGNS[S.design];
+  const id = kind==="env" ? d.env : d.liner;
+  if (!S[kind]) { loadFrame(); return; }
+  $("frame").src = tmplUrl(id);
+  $("urltxt").textContent = "/design/" + id;
+  $("urlnote").textContent = "— the piece she just added, same collection";
+  setTimeout(()=>{ $("urlnote").textContent = "— real editor, real Swan Lake template"; }, 4000);
+}
+
+function unitPrice(){
+  const ladder = PRICING.qtyLadder[S.qty] || 1;
+  let u = PRICING.printBase + PRICING.card[S.card];
+  if (S.back)  u += PRICING.addons.back;
+  if (S.env)   u += PRICING.addons.env;
+  if (S.liner) u += PRICING.addons.liner;
+  if (S.suite) u = (u + PRICING.suiteExtraPerSet) * (1 - PRICING.suitePrintDiscount);
+  return u * ladder;
+}
+function totals(){
+  const u = unitPrice();
+  const goods = u * S.qty;
+  return { unit:u, goods, ship:PRICING.shipping, total:goods + PRICING.shipping };
+}
+function price(){
+  const t = totals();
+  const extras = (S.back?PRICING.addons.back:0)+(S.env?PRICING.addons.env:0)+(S.liner?PRICING.addons.liner:0);
+  $("lbl-base").textContent = (S.suite ? "Full suite ×" : "Invitation ×") + S.qty;
+  $("v-base").textContent = money(t.goods - (extras * S.qty * (PRICING.qtyLadder[S.qty]||1)));
+  $("r-extras").style.display = extras ? "flex" : "none";
+  $("v-extras").textContent = "+" + money(extras * S.qty * (PRICING.qtyLadder[S.qty]||1));
+  $("v-ship").textContent  = money(t.ship);
+  $("v-total").textContent = money(t.total);
+  $("v-per").textContent   = money(t.unit) + " each";
+}
+
+/* ── 03 Suite ───────────────────────────────────────────────────── */
+function openSuite(){
+  setStep(3);
+  const d = DESIGNS[S.design];
+  const pieces = [
+    { id:d.invite[S.size], n:"Invitation" },
+    { id:d.details,        n:"Details card" },
+    { id:d.rsvp,           n:"RSVP card" },
+    { id:d.env,            n:"Envelope" },
+    { id:d.liner,          n:"Liner" },
+  ];
+  $("suitegrid").innerHTML = pieces.map(p =>
+      '<div class="pc"><div class="t">'
+    + '<img src="/borders/'+p.id+'-border.svg" alt="" '
+    + 'onerror="thumbFallback(this,\''+p.id+'\',\''+p.n+'\')">'
+    + '</div><b>'+p.n+'</b><span>'+p.id+'</span></div>').join("");
+
+  const wasSuite = S.suite;
+  S.suite=false; const single = totals().total;
+  S.suite=true;  const suite  = totals().total;
+  S.suite = wasSuite;
+
+  // What the same five pieces cost bought one at a time, with no suite discount.
+  const separate = (suite - PRICING.shipping) / (1 - PRICING.suitePrintDiscount) + PRICING.shipping;
+  const saving = separate - suite;
+
+  $("sv-single").textContent   = money(single/S.qty);
+  $("sv-singletot").textContent= money(single) + " total";
+  $("sv-suite").textContent    = money(suite/S.qty);
+  $("sv-suitetot").innerHTML   = '<span class="strike">' + money(separate) + '</span> &nbsp;' + money(suite) + " total";
+  $("sv-save").textContent     = "You save " + money(saving);
+  $("ov-suite").classList.add("on");
+}
+function closeSuite(take){
+  S.suite = !!take;
+  $("ov-suite").classList.remove("on");
+  buildSpec();
+  openFork();
+}
+
+/* ── 04 Fork ────────────────────────────────────────────────────── */
+function openFork(){
+  setStep(4);
+  const dl = S.suite ? PRICING.digitalSuite : PRICING.digitalSingle;
+  $("forkwhat").textContent = S.suite ? "suite" : "invitation";
+  $("fk-dl").innerHTML = S.suite
+    ? '<span class="strike" style="font-size:22px">' + money(PRICING.digitalSingle*5) + '</span> ' + money(dl)
+    : money(dl);
+  $("fk-dlnote").textContent = S.suite
+    ? "Five pieces for the price of two and a bit."
+    : "One design, print-ready.";
+  $("fk-pr").textContent = money(totals().total);
+  $("fk-qty").textContent = S.qty + " sets, delivery included";
+  $("ov-fork").classList.add("on");
+}
+
+/* ── 05 Gate ────────────────────────────────────────────────────── */
+function openGate(path){
+  S.path = path; setStep(5);
+  $("ov-fork").classList.remove("on");
+  $("ov-gate").classList.add("on");
+}
+function finish(mode){
+  S.email = mode==="account" ? ($("gate-email").value || "her@email.com") : null;
+  $("ov-gate").classList.remove("on");
+  setStep(6);
+  renderSummary();
+  show("s-done");
+}
+
+/* ── 06 Summary ─────────────────────────────────────────────────── */
+function renderSummary(){
+  const d = DESIGNS[S.design];
+  const t = totals();
+  const dl = S.suite ? PRICING.digitalSuite : PRICING.digitalSingle;
+  const isDl = S.path==="download";
+  $("donelead").textContent = isDl
+    ? "She downloaded it. You have her email, her wedding date and a twelve month print credit sitting on her account. That is not a lost print sale, it is a deposit on one."
+    : "She ordered printing. She never created a password, never saw a price she had not already seen, and never typed her names twice.";
+
+  const rows = [
+    ["Entry", "Ad → /design/" + d.invite[S.size] + " (design first, no product page)"],
+    ["Design", "Swan Lake " + d.label + " · template " + currentTemplate()],
+    ["Size", SIZES.find(s=>s.key===S.size).label],
+    ["Card", CARDS.find(c=>c.key===S.card).label],
+    ["Added", [S.back&&"double sided", S.env&&"printed envelope", S.liner&&"liner"].filter(Boolean).join(", ") || "nothing"],
+    ["Bought", S.suite ? "Full Swan Lake suite (5 pieces)" : "Invitation only"],
+    ["Path", isDl ? "Instant download — " + money(dl) : "Printed, " + S.qty + " sets — " + money(t.total)],
+    ["Account", S.email ? "Email captured: " + S.email + " (magic link, no password)" : "Guest checkout, no account"],
+    ["Credit", isDl ? money(dl) + " off printing for 12 months" : "n/a"],
+    ["Next touch", "Eight weeks before her wedding date, on-the-day suite pre-filled"],
+  ];
+  $("summary").innerHTML = rows.map(r =>
+    '<div class="l"><b>'+r[0]+'</b><span>'+r[1]+'</span></div>').join("");
+
+  $("payload").textContent = S.cartPayload
+    ? S.cartPayload
+    : JSON.stringify({
+        note: "Press ADD TO CART inside the editor to capture the real message.",
+        wouldSend: {
+          type:"linenSignAddToCart",
+          variant:"demo-"+currentTemplate(),
+          summary: d.label + " invitation (" + SIZES.find(s=>s.key===S.size).label + ")",
+          spec:{ size:S.size, card:S.card, qty:S.qty, doubleSided:S.back, envelope:S.env, liner:S.liner, suite:S.suite },
+          totals:{ unit:+unitPrice().toFixed(2), total:+t.total.toFixed(2) }
+        }
+      }, null, 2);
+}
+
+/* ── Real postMessage from the editor ───────────────────────────── */
+window.addEventListener("message", e => {
+  const m = e.data;
+  if (!m || m.type !== "linenSignAddToCart") return;
+  let design = m.design;
+  try { const p = JSON.parse(m.design); design = { templateId:p.templateId, templateName:p.templateName,
+        sizeKey:p.sizeKey, background:p.background, elements:"[" + (p.elements||[]).length + " elements]",
+        pages:p.pages ? p.pages.length + " pages" : undefined }; } catch(err){}
+  S.cartPayload = JSON.stringify({ type:m.type, variant:m.variant, summary:m.summary, design }, null, 2);
+  if (!$("ov-suite").classList.contains("on") && !$("ov-fork").classList.contains("on")
+      && !$("ov-gate").classList.contains("on") && !$("s-done").classList.contains("on")) {
+    openSuite();
+  }
+});
+
+function restart(){
+  S.design="o1"; S.size="a5"; S.card="signature"; S.qty=50;
+  S.back=S.env=S.liner=S.suite=false; S.path=null; S.email=null; S.cartPayload=null;
+  document.querySelectorAll(".ov").forEach(o=>o.classList.remove("on"));
+  show("s-ad"); setStep(0);
+}
+renderSteps();
+</script>
+</body>
+</html>
