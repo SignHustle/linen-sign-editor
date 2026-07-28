@@ -372,7 +372,7 @@ pre.payload{
     <div class="sub" id="specsub">Swan Lake · Option 1</div>
 
     <div class="grp">
-      <label>Design</label>
+      <label id="designlabel">Design</label>
       <div class="opts" id="opt-design"></div>
       <span class="affects">Changes the design</span>
     </div>
@@ -388,7 +388,7 @@ pre.payload{
     </div>
 
     <div class="grp">
-      <label>Card</label>
+      <label id="cardlabel">Card</label>
       <div class="opts" id="opt-card"></div>
       <div class="envcol" id="cardcol"></div>
       <span class="affects" style="color:var(--plum-soft)" id="carddesc">Price only</span>
@@ -565,7 +565,7 @@ const LINERS = {
   o3: { a5:{euro:"sw57",iflap:"sw58"} },
 };
 function linerId(){
-  const L = LINERS[S.design], f = envFlap();
+  const L = LINERS[S.designs.liner], f = envFlap();
   return (L[S.size] && L[S.size][f]) || L.a5[f];
 }
 const DESIGNS = {
@@ -614,8 +614,23 @@ const ENVELOPE_COLOURS = [{ name:"White", hex:"#FAFAF7", flap:"euro" }]
 function envColour(){ return ENVELOPE_COLOURS.find(c => c.name===S.envColour) || ENVELOPE_COLOURS[0]; }
 function envFlap(){ return envColour().flap; }
 function flapLabel(){ return envFlap()==="euro" ? "Euro flap" : "iFlap"; }
-function cardColour(){ return PALETTE.find(c => c.name===S.cardColour) || PALETTE[16]; }
 const slugName = n => n.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+
+/* ── Per-piece design + card stock ─────────────────────────────────
+   Each printed piece carries its own design option and card stock.
+   The back always shares the invitation's stock and design — it is
+   the other side of the same physical card. Envelope pieces map to
+   the invitation for these controls. ─────────────────────────────── */
+const DESIGN_TARGET = { invite:"invite", back:"invite", envFront:"invite", envBack:"invite",
+                        overview:"invite", details:"details", rsvp:"rsvp", liner:"liner" };
+const CARD_TARGET   = { details:"details", rsvp:"rsvp" };   // everything else -> invite
+const TARGET_LABEL  = { invite:"Invitation", details:"Details card", rsvp:"RSVP card", liner:"Liner" };
+function designTarget(){ return DESIGN_TARGET[S.piece] || "invite"; }
+function cardTarget(){ return CARD_TARGET[S.piece] || "invite"; }
+function cardOf(t){ return S.cards[t]; }
+function cardHexOf(t){ const c = cardOf(t); return (PALETTE.find(p=>p.name===c.colour)||PALETTE[16]).hex; }
+function cardSlugOf(t){ const c = cardOf(t); return c.stock==="colour" ? slugName(c.colour) : (c.stock==="cream" ? "cream" : "white"); }
+function cardLockedOf(t){ return cardOf(t).stock === "colour"; }
 const SIZES = [
   { key:"a5",       label:"A5",     d:"148×210" },
   { key:"120x180",  label:"5×7in",  d:"120×180" },
@@ -631,7 +646,11 @@ const QTYS = [25,50,75,100,150];
 
 /* ── State ──────────────────────────────────────────────────────── */
 const S = {
-  design:"o1", size:"a5", card:"matte", cardColour:"Buttermilk", qty:50,
+  designs:{ invite:"o1", details:"o1", rsvp:"o1", liner:"o1" },
+  cards:{ invite:{stock:"matte",colour:"Buttermilk"},
+          details:{stock:"matte",colour:"Buttermilk"},
+          rsvp:{stock:"matte",colour:"Buttermilk"} },
+  size:"a5", qty:50,
   back:false, details:false, rsvp:false, env:false, liner:false, piece:"invite", envColour:"Almond",
   suite:false, path:null, email:null, cartPayload:null,
 };
@@ -670,8 +689,12 @@ $("picks").innerHTML = Object.entries(DESIGNS).map(([k,d]) => {
 }).join("");
 
 function go(id, designKey){
-  if (designKey) S.design = designKey;
-  S.size="a5"; S.card="matte"; S.qty=50; S.back=false; S.details=false; S.rsvp=false;
+  const dk = designKey || "o1";
+  S.designs = { invite:dk, details:dk, rsvp:dk, liner:dk };
+  S.cards = { invite:{stock:"matte",colour:"Buttermilk"},
+              details:{stock:"matte",colour:"Buttermilk"},
+              rsvp:{stock:"matte",colour:"Buttermilk"} };
+  S.size="a5"; S.qty=50; S.back=false; S.details=false; S.rsvp=false;
   S.env=false; S.liner=false; S.suite=false;
   S.piece="invite"; S.envColour="Almond";
   show("s-edit"); setStep(1);
@@ -683,11 +706,11 @@ function go(id, designKey){
 // Every selected piece is a tab at the bottom of the editor, so she can
 // switch between the designs in her order at any time.
 function pieceList(){
-  const d = DESIGNS[S.design], f = envFlap(), E = ENVELOPES[S.size];
-  const list = [ { key:"invite", label:"Invitation", id:d.invite[S.size] } ];
-  if (S.back)    list.push({ key:"back",     label:"Back",           id:d.back[S.size] });
-  if (S.details) list.push({ key:"details",  label:"Details",        id:d.details });
-  if (S.rsvp)    list.push({ key:"rsvp",     label:"RSVP",           id:d.rsvp });
+  const dInv = DESIGNS[S.designs.invite], f = envFlap(), E = ENVELOPES[S.size];
+  const list = [ { key:"invite", label:"Invitation", id:dInv.invite[S.size] } ];
+  if (S.back)    list.push({ key:"back",     label:"Back",           id:dInv.back[S.size] });
+  if (S.details) list.push({ key:"details",  label:"Details",        id:DESIGNS[S.designs.details].details });
+  if (S.rsvp)    list.push({ key:"rsvp",     label:"RSVP",           id:DESIGNS[S.designs.rsvp].rsvp });
   if (S.env){    list.push({ key:"envFront", label:"Envelope front", id:E[f].front });
                  list.push({ key:"envBack",  label:"Envelope back",  id:E[f].back }); }
   if (S.liner)   list.push({ key:"liner",    label:"Liner",          id:linerId() });
@@ -697,7 +720,8 @@ function pieceList(){
 // cards only on coloured stock). Locks the editor's background picker.
 function pieceBg(key){
   if (key==="envFront" || key==="envBack") return envColour().hex;
-  if (["invite","back","details","rsvp"].includes(key) && cardBgLocked()) return cardColour().hex;
+  const t = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp" }[key];
+  if (t && cardLockedOf(t)) return cardHexOf(t);
   return null;
 }
 function currentTemplate(){
@@ -714,6 +738,7 @@ function renderPieces(){
 function setPiece(k){
   if (S.piece===k) return;
   S.piece = k;
+  buildSpec();     // Design + Card controls follow the active piece
   loadFrame();
 }
 function loadFrame(){
@@ -731,7 +756,7 @@ function loadFrame(){
     $("frame").src = tmplUrl(id) + (bg ? "&bg="+bg.slice(1)+"&lockbg=1" : "");
     $("urltxt").textContent = "/design/" + id;
   }
-  $("specsub").textContent = DESIGNS[S.design].sub;
+  $("specsub").textContent = DESIGNS[S.designs[designTarget()]].sub;
 }
 /* Photo-mockup geometry measured from the PSD (fractions of each crop). */
 const MOCK = {
@@ -758,21 +783,23 @@ function mockPiece(p, base, geo, width, opts){
     + '<img src="/demo/mockup/'+base+'.webp" alt="">' + overlay
     + '</div><b>'+p.label+'</b><span>'+p.id
     + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')
-    + (opts.cardCol ? ' · '+S.cardColour : '')+'</span></div>';
+    + (opts.cardCol ? ' · '+opts.cardCol : '')+'</span></div>';
 }
 function renderSuiteView(){
   // Kate's photographic flat-lay, recoloured to the chosen paper stocks,
   // with the real templates rendered live onto each paper.
   const slug = slugName(S.envColour);
-  const cardSlug = S.card==="colour" ? slugName(S.cardColour) : (S.card==="cream" ? "cream" : "white");
-  const cardOpts = S.card==="colour" ? {cardCol:true} : {};
-  const a6base = (S.design==="o2" ? "card-a6p-" : "card-a6l-") + cardSlug;
-  const a6geo  = S.design==="o2" ? "a6p" : "a6l";
   // Container aspect that keeps the design at its true print ratio: the
   // paper rect is a fixed fraction of the crop, so scale by its fractions.
   const sizeR = { a5:148/210, "120x180":120/180, "120x120":1 }[S.size];
   const cardAspect = sizeR * MOCK.a5.paper[3] / MOCK.a5.paper[2];
   const cardW = S.size==="120x120" ? 260 : 220;
+  const colOpt = t => cardLockedOf(t) ? { cardCol: cardOf(t).colour } : {};
+  const a6 = t => {
+    const portrait = S.designs[t]==="o2";
+    return { base:(portrait ? "card-a6p-" : "card-a6l-") + cardSlugOf(t),
+             geo: portrait ? "a6p" : "a6l", w: portrait ? 190 : 260 };
+  };
   $("suiteview").innerHTML =
     '<div class="svhead">Your suite · double-click a piece to edit it</div><div class="svgrid">' +
     pieceList().map(p => {
@@ -780,9 +807,10 @@ function renderSuiteView(){
         case "liner":    return mockPiece(p, "openenv-"+slug,  "openenv",  270, {linerMask:true, env:true});
         case "envFront": return mockPiece(p, "envfront-"+slug, "envfront", 330, {env:true});
         case "envBack":  return mockPiece(p, "envback-"+slug,  "envback",  330, {env:true});
-        case "details":
-        case "rsvp":     return mockPiece(p, a6base, a6geo, S.design==="o2" ? 190 : 260, cardOpts);
-        default:         return mockPiece(p, "card-a5-"+cardSlug, "a5", cardW, Object.assign({aspect: cardAspect}, cardOpts));
+        case "details": { const a = a6("details"); return mockPiece(p, a.base, a.geo, a.w, colOpt("details")); }
+        case "rsvp":    { const a = a6("rsvp");    return mockPiece(p, a.base, a.geo, a.w, colOpt("rsvp")); }
+        default:         return mockPiece(p, "card-a5-"+cardSlugOf("invite"), "a5", cardW,
+                                          Object.assign({aspect: cardAspect}, colOpt("invite")));
       }
     }).join("") + '</div>';
 }
@@ -793,24 +821,28 @@ function pickEnvColour(name){
   else renderPieces();
 }
 function buildSpec(){
+  const dt = designTarget(), ct = cardTarget();
+  $("designlabel").textContent = "Design — " + TARGET_LABEL[dt];
+  $("cardlabel").textContent = "Card — " + TARGET_LABEL[ct] + (ct==="invite" && S.back ? " (front + back)" : "");
   $("opt-design").innerHTML = Object.keys(DESIGNS).map(k =>
-    '<button class="opt'+(S.design===k?' on':'')+'" onclick="pickDesign(\''+k+'\')">'+DESIGNS[k].label+'</button>').join("");
+    '<button class="opt'+(S.designs[dt]===k?' on':'')+'" onclick="pickDesign(\''+k+'\')">'+DESIGNS[k].label+'</button>').join("");
   $("opt-size").innerHTML = SIZES.map(s =>
     '<button class="opt'+(S.size===s.key?' on':'')+'" onclick="pickSize(\''+s.key+'\')">'+s.label+'<span class="d">'+s.d+'</span></button>').join("");
+  const cardSel = cardOf(ct);
   $("opt-card").innerHTML = CARDS.map(c => {
     const d = PRICING.card[c.key];
-    return '<button class="opt'+(S.card===c.key?' on':'')+'" onclick="pickCard(\''+c.key+'\')">'+c.label+
+    return '<button class="opt'+(cardSel.stock===c.key?' on':'')+'" onclick="pickCard(\''+c.key+'\')">'+c.label+
            (d?'<span class="d">+'+money(d)+'</span>':'')+'</button>';
   }).join("");
   const cardWrap = $("cardcol");
-  if (S.card==="colour"){
+  if (cardSel.stock==="colour"){
     cardWrap.classList.add("on");
     cardWrap.innerHTML =
       '<div class="swrow">' +
       PALETTE.map(c =>
-        '<button class="swb'+(c.name===S.cardColour?' on':'')+'" style="background:'+c.hex+'" '
+        '<button class="swb'+(c.name===cardSel.colour?' on':'')+'" style="background:'+c.hex+'" '
         + 'title="'+c.name+'" onclick="pickCardColour(\''+c.name+'\')"></button>').join("") +
-      '</div><div class="swname">'+S.cardColour+' 300gsm</div>';
+      '</div><div class="swname">'+cardSel.colour+' 300gsm</div>';
     $("carddesc").textContent = "Changes the design — background prints the card colour";
   } else { cardWrap.classList.remove("on"); cardWrap.innerHTML=""; $("carddesc").textContent = "Price only"; }
   $("opt-qty").innerHTML = QTYS.map(q =>
@@ -849,24 +881,29 @@ function pickSize(k){
   loadFrame();
 }
 function pickDesign(k){
-  if (S.design===k) return;
-  S.design=k; buildSpec(); loadFrame();
+  const t = designTarget();
+  if (S.designs[t]===k) return;
+  S.designs[t]=k; buildSpec(); loadFrame();
+}
+// Does the active piece render the given card target's stock?
+function pieceUsesCard(t){
+  const mapped = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp" }[S.piece];
+  return S.piece==="overview" || mapped===t;
 }
 function pickCard(k){
-  if (S.card===k) return;
-  const wasLocked = cardBgLocked();
-  S.card=k; buildSpec();
+  const t = cardTarget(), c = cardOf(t);
+  if (c.stock===k) return;
+  const wasLocked = cardLockedOf(t);
+  c.stock=k; buildSpec();
   // Stock changes reload the design only when the paper colour changes.
-  if (cardBgLocked() || wasLocked) loadFrame(); else renderPieces();
+  if ((cardLockedOf(t) || wasLocked) && pieceUsesCard(t)) loadFrame(); else renderPieces();
 }
 function pickCardColour(name){
-  S.cardColour=name; buildSpec();
-  if (["invite","back","details","rsvp","overview"].includes(S.piece)) loadFrame();
-  else renderPieces();
+  const t = cardTarget();
+  cardOf(t).colour=name; buildSpec();
+  if (pieceUsesCard(t)) loadFrame(); else renderPieces();
 }
 function pickQty(q){ S.qty=q; buildSpec(); }
-// Coloured card stock fixes the canvas background in the editor.
-function cardBgLocked(){ return S.card==="colour"; }
 function flashFrame(kind){
   // Each add-on is its own template in the editor — load the piece she just
   // added (or fall back after removing it) and note it in the mock URL bar.
@@ -879,11 +916,11 @@ function flashFrame(kind){
 
 function unitPrice(){
   const ladder = PRICING.qtyLadder[S.qty] || 1;
-  let u = PRICING.printBase + PRICING.card[S.card];
+  let u = PRICING.printBase + PRICING.card[S.cards.invite.stock];
   if (S.back)  u += PRICING.addons.back;
   // Details + RSVP are already inside suiteExtraPerSet — don't double count.
-  if (S.details && !S.suite) u += PRICING.addons.details;
-  if (S.rsvp    && !S.suite) u += PRICING.addons.rsvp;
+  if (S.details && !S.suite) u += PRICING.addons.details + PRICING.card[S.cards.details.stock];
+  if (S.rsvp    && !S.suite) u += PRICING.addons.rsvp    + PRICING.card[S.cards.rsvp.stock];
   if (S.env)   u += PRICING.addons.env;
   if (S.liner) u += PRICING.addons.liner;
   if (S.suite) u = (u + PRICING.suiteExtraPerSet) * (1 - PRICING.suitePrintDiscount);
@@ -896,8 +933,10 @@ function totals(){
 }
 function price(){
   const t = totals();
-  const extras = (S.back?PRICING.addons.back:0)+(S.details?PRICING.addons.details:0)
-               +(S.rsvp?PRICING.addons.rsvp:0)+(S.env?PRICING.addons.env:0)+(S.liner?PRICING.addons.liner:0);
+  const extras = (S.back?PRICING.addons.back:0)
+               +(S.details?PRICING.addons.details+PRICING.card[S.cards.details.stock]:0)
+               +(S.rsvp?PRICING.addons.rsvp+PRICING.card[S.cards.rsvp.stock]:0)
+               +(S.env?PRICING.addons.env:0)+(S.liner?PRICING.addons.liner:0);
   $("lbl-base").textContent = (S.suite ? "Full suite ×" : "Invitation ×") + S.qty;
   $("v-base").textContent = money(t.goods - (extras * S.qty * (PRICING.qtyLadder[S.qty]||1)));
   $("r-extras").style.display = extras ? "flex" : "none";
@@ -910,13 +949,13 @@ function price(){
 /* ── 03 Suite ───────────────────────────────────────────────────── */
 function openSuite(){
   setStep(3);
-  const d = DESIGNS[S.design], f = envFlap();
+  const f = envFlap();
   const pieces = [
-    { id:d.invite[S.size],            n:"Invitation" },
-    { id:d.details,                   n:"Details card" },
-    { id:d.rsvp,                      n:"RSVP card" },
-    { id:ENVELOPES[S.size][f].front,  n:"Envelope" },
-    { id:linerId(),                   n:"Liner" },
+    { id:DESIGNS[S.designs.invite].invite[S.size], n:"Invitation" },
+    { id:DESIGNS[S.designs.details].details,       n:"Details card" },
+    { id:DESIGNS[S.designs.rsvp].rsvp,             n:"RSVP card" },
+    { id:ENVELOPES[S.size][f].front,               n:"Envelope" },
+    { id:linerId(),                                n:"Liner" },
   ];
   $("suitegrid").innerHTML = pieces.map(p =>
       '<div class="pc"><div class="t">'
@@ -979,7 +1018,7 @@ function finish(mode){
 
 /* ── 06 Summary ─────────────────────────────────────────────────── */
 function renderSummary(){
-  const d = DESIGNS[S.design];
+  const d = DESIGNS[S.designs.invite];
   const t = totals();
   const dl = S.suite ? PRICING.digitalSuite : PRICING.digitalSingle;
   const isDl = S.path==="download";
@@ -989,9 +1028,16 @@ function renderSummary(){
 
   const rows = [
     ["Entry", "Ad → /design/" + d.invite[S.size] + " (design first, no product page)"],
-    ["Design", "Swan Lake " + d.label + " · template " + currentTemplate()],
+    ["Design", ["Invitation "+d.label,
+                S.details && "details "+DESIGNS[S.designs.details].label,
+                S.rsvp && "RSVP "+DESIGNS[S.designs.rsvp].label,
+                S.liner && "liner "+DESIGNS[S.designs.liner].label].filter(Boolean).join(" · ")],
     ["Size", SIZES.find(s=>s.key===S.size).label],
-    ["Card", CARDS.find(c=>c.key===S.card).label + (S.card==="colour" ? " — "+S.cardColour : "")],
+    ["Card", [["invite","Invitation"],["details","Details"],["rsvp","RSVP"]]
+      .filter(([k]) => k==="invite" || S[k])
+      .map(([k,lbl]) => { const c = S.cards[k];
+        return lbl+": "+CARDS.find(x=>x.key===c.stock).label+(c.stock==="colour" ? " — "+c.colour : ""); })
+      .join(" · ")],
     ["Added", [S.back&&"double sided", S.details&&"details card", S.rsvp&&"RSVP card",
                S.env&&("printed envelope front + back — "+S.envColour+", "+flapLabel()),
                S.liner&&"liner"].filter(Boolean).join(", ") || "nothing"],
@@ -1012,8 +1058,7 @@ function renderSummary(){
           type:"linenSignAddToCart",
           variant:"demo-"+currentTemplate(),
           summary: d.label + " invitation (" + SIZES.find(s=>s.key===S.size).label + ")",
-          spec:{ size:S.size,
-                 card:{ stock:S.card, colour: S.card==="colour" ? S.cardColour : null },
+          spec:{ size:S.size, designs:S.designs, cards:S.cards,
                  qty:S.qty, doubleSided:S.back, details:S.details, rsvp:S.rsvp,
                  envelope:S.env ? { colour:S.envColour, size:ENVELOPES[S.size].label, flap:envFlap() } : false,
                  liner:S.liner, suite:S.suite },
@@ -1038,7 +1083,11 @@ window.addEventListener("message", e => {
 });
 
 function restart(){
-  S.design="o1"; S.size="a5"; S.card="matte"; S.qty=50;
+  S.designs = { invite:"o1", details:"o1", rsvp:"o1", liner:"o1" };
+  S.cards = { invite:{stock:"matte",colour:"Buttermilk"},
+              details:{stock:"matte",colour:"Buttermilk"},
+              rsvp:{stock:"matte",colour:"Buttermilk"} };
+  S.size="a5"; S.qty=50;
   S.back=S.details=S.rsvp=S.env=S.liner=S.suite=false; S.piece="invite"; S.envColour="Almond";
   S.path=null; S.email=null; S.cartPayload=null;
   document.querySelectorAll(".ov").forEach(o=>o.classList.remove("on"));

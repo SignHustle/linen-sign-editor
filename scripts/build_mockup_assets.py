@@ -47,9 +47,14 @@ def recolour_rgba(rgba, target):
     lum = rgb @ np.array([0.299,0.587,0.114], dtype=np.float32)
     ys, xs = np.where(alpha > 0.95)
     paper = np.median(lum[ys, xs])
-    detail = (np.clip(lum - paper, -80, 80) * alpha)[..., None]
+    d = lum - paper
+    # Shadows keep their depth; highlights are compressed hard so the
+    # photo's lit paper edge doesn't turn into a white rim on the tint.
+    pos = np.minimum(np.clip(d, 0, None) * 0.35, 28)
+    neg = np.clip(d, -80, 0) * 0.9
+    detail = ((pos + neg) * alpha)[..., None]
     out = rgba.copy()
-    out[:,:,:3] = np.clip(target[None,None,:] + detail*0.9, 0, 255)
+    out[:,:,:3] = np.clip(target[None,None,:] + detail, 0, 255)
     return out
 
 def save_webp(rgba, path, w, q=85):
