@@ -139,7 +139,9 @@ const SIZES = {
   // Stationery sizes
   "120x180":   { label:"120×180mm (5×7\")",     w:120,  h:180  },
   "a5":        { label:"A5 (148×210mm)",        w:148,  h:210  },
-  "120x120":   { label:"120×120mm",             w:120,  h:120  },
+  // NOTE: key stays "120x120" (the artboards were drawn at 120mm and the
+  // generated templates carry that key) but the PRODUCT is 140×140mm.
+  "120x120":   { label:"140×140mm",             w:140,  h:140  },
   "a6":        { label:"A6 (105×148mm)",        w:105,  h:148  },
   "dl":        { label:"DL (99×210mm)",         w:99,   h:210  },
   "90x50":     { label:"90×50mm",               w:90,   h:50   },
@@ -147,14 +149,16 @@ const SIZES = {
   // Envelopes
   "130x190":   { label:"130×190mm Envelope",    w:130,  h:190  },
   "c5":        { label:"C5 Envelope (162×229mm)", w:162, h:229 },
-  "130x130":   { label:"130×130mm Envelope",    w:130,  h:130  },
+  // NOTE: key stays "130x130"; the physical square envelope is 150×150mm
+  // (per the "150 Square" mockup naming) and fits the 140×140 invite.
+  "130x130":   { label:"150×150mm Envelope",    w:150,  h:150  },
   "190x130":   { label:"130×190mm Envelope (Landscape)", w:190, h:130 },
   "229x162":   { label:"C5 Envelope (Landscape)", w:229, h:162 },
   // Landscape cards & liners
   "148x105":   { label:"A6 Landscape (148×105mm)", w:148, h:105 },
   "liner-c5":      { label:"C5 Envelope Liner",      w:250, h:340 },
   "liner-130x190": { label:"130×190mm Envelope Liner", w:250, h:340 },
-  "liner-130x130": { label:"130×130mm Envelope Liner", w:250, h:340 },
+  "liner-130x130": { label:"150×150mm Envelope Liner", w:250, h:340 },
 };
 
 const SIGN_TYPES = {

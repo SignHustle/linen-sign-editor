@@ -536,7 +536,7 @@ const PRICING = {
   currency: "$",
   digitalSingle: 25,          // matches Swan Lake single template price
   digitalSuite:  59,          // TBD: 2.36× single, inside the 2.2–2.5× band — needs Kate's sign-off
-  printBase:     2.60,        // A5 / 5×7in 1-sided retail at qty 50–74 (square 120×120 not in master)
+  printBase:     2.60,        // A5 / 5×7in 1-sided retail at qty 50–74 (square 140×140 not in master)
   card: { matte:0, textured:0, cream:0, colour:0.50 },  // coloured stock +$0.50/card per the master
   addons: { back:0.40, details:2.30, rsvp:2.30, env:0.90, liner:1.20 },
   // back = 2-sided upcharge; details/rsvp = A6 1-sided retail at qty 50–74;
@@ -555,7 +555,7 @@ const PRICING = {
 const ENVELOPES = {
   a5:        { label:"C5 landscape",   euro:{front:"sw32",back:"sw33"}, iflap:{front:"sw34",back:"sw35"} },
   "120x180": { label:"190×130",        euro:{front:"sw42",back:"sw43"}, iflap:{front:"sw44",back:"sw45"} },
-  "120x120": { label:"130×130 square", euro:{front:"sw46",back:"sw47"}, iflap:{front:"sw48",back:"sw49"} },
+  "120x120": { label:"150×150 square", euro:{front:"sw46",back:"sw47"}, iflap:{front:"sw48",back:"sw49"} },
 };
 // Liners per design × size × flap. Not every combination exists yet —
 // missing ones fall back to the C5 variant of the same design + flap.
@@ -640,7 +640,7 @@ function cardLockedOf(t){ return cardOf(t).stock === "colour"; }
 const SIZES = [
   { key:"a5",       label:"A5",     d:"148×210" },
   { key:"120x180",  label:"5×7in",  d:"120×180" },
-  { key:"120x120",  label:"Square", d:"120×120" },
+  { key:"120x120",  label:"Square", d:"140×140" },
 ];
 const CARDS = [
   { key:"matte",    label:"Matte White 350gsm" },
