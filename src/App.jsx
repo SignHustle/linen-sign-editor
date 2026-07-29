@@ -4802,7 +4802,7 @@ export default function LinenSignEditor() {
   const zoomPct = Math.round(zoom * 100);
 
   return (
-    <div style={{height:"100vh",background:isPreview?(urlParams.bg?"#"+urlParams.bg:"#FFFFFF"):"#F7F3EE",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+    <div style={{height:"100vh",background:isPreview?(urlParams.bg==="none"?"transparent":urlParams.bg?"#"+urlParams.bg:"#FFFFFF"):"#F7F3EE",fontFamily:"Georgia,serif",display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
       {/* Top bar */}
       <div style={{display:isPreview?"none":"flex",alignItems:"center",justifyContent:"space-between",
@@ -5083,7 +5083,7 @@ export default function LinenSignEditor() {
           <div ref={canvasRef}
             data-canvas-root
             style={{width:dispW,height:dispH,margin:"auto",flexShrink:0,position:"relative",overflow:"hidden",
-              background:(isPreview && urlParams.bg) ? "#"+urlParams.bg : bgColour,
+              background:(isPreview && urlParams.bg) ? (urlParams.bg==="none" ? "transparent" : "#"+urlParams.bg) : bgColour,
               boxShadow:isPreview?"none":"0 8px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
               borderRadius:isPreview?0:4}}>
             <div

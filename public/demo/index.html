@@ -830,7 +830,9 @@ function mockPiece(p, base, geo, width, opts){
   // White ink on dark paper can't be shown with multiply (white x anything
   // vanishes), so those overlays render on the paper colour, normal blend.
   const dark = pieceDarkStock(p.key);
-  const inkParams = dark ? '&bg='+(opts.env ? envColour().hex : cardHexOf(CARD_TARGET[p.key])).slice(1)+'&ink=white' : '';
+  // Transparent canvas: only the white ink overlays the paper photo, so
+  // the envelope's flap fold and paper shading stay visible beneath it.
+  const inkParams = dark ? '&bg=none&ink=white' : '';
   const inkClass = dark ? ' class="inkwhite"' : '';
   const overlay = opts.noPrint ? ''
     : opts.linerMask
