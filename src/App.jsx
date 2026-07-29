@@ -4778,9 +4778,18 @@ export default function LinenSignEditor() {
         padding:"10px 20px",background:"rgba(255,255,255,0.78)",backdropFilter:"blur(12px)",
         borderBottom:"1px solid rgba(180,165,150,0.25)",flexShrink:0,zIndex:50}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <button onClick={() => setStage("gallery")}
+          <button onClick={() => {
+              // Browse alternatives for exactly this piece: same category and
+              // size, any collection.
+              if (template) {
+                setPickedType(template.category);
+                setPickedCollection(null);
+                setPickedSize(template.sizeKey);
+              }
+              setStage("gallery");
+            }}
             style={{background:"none",border:"none",cursor:"pointer",color:"#9A8F85",fontSize:12,letterSpacing:1,padding:0}}>
-            ← All Designs
+            ← View other designs
           </button>
           <div style={{width:1,height:16,background:"rgba(180,165,150,0.4)"}}/>
           <div style={{fontSize:13,color:"#3A3028"}}>{template?.name}</div>

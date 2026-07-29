@@ -147,9 +147,9 @@ h1.big em{font-weight:300}
 .svp .mock iframe{position:absolute;margin:0;border:0;pointer-events:none;mix-blend-mode:multiply}
 /* Liner prints through the flap: mask lives on a wrapper div (masking an
    iframe element directly is unreliable in Firefox) */
-.linrwrap{position:absolute;inset:0;
-  -webkit-mask-image:url('/demo/mockup/linermask.png');mask-image:url('/demo/mockup/linermask.png');
-  -webkit-mask-size:100% 100%;mask-size:100% 100%}
+.linrwrap{position:absolute;inset:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}
+.svp.sel .mock{outline:3px solid var(--plum);outline-offset:5px;border-radius:2px}
+.svp.sel b{color:var(--plum)}
 .linrwrap iframe{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;
   pointer-events:none;mix-blend-mode:normal}
 .svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#4A3A30;display:block;margin-top:6px}
@@ -371,13 +371,13 @@ pre.payload{
     <h2>Your <em>invitation</em></h2>
     <div class="sub" id="specsub">Swan Lake · Option 1</div>
 
-    <div class="grp">
+    <div class="grp" id="grp-design">
       <label id="designlabel">Design</label>
       <div class="opts" id="opt-design"></div>
       <span class="affects">Changes the design</span>
     </div>
 
-    <div class="grp">
+    <div class="grp" id="grp-size">
       <label>Size</label>
       <div class="opts" id="opt-size"></div>
       <span class="affects">Changes the design</span>
@@ -387,7 +387,7 @@ pre.payload{
       </div>
     </div>
 
-    <div class="grp">
+    <div class="grp" id="grp-card">
       <label id="cardlabel">Card</label>
       <div class="opts" id="opt-card"></div>
       <div class="envcol" id="cardcol"></div>
@@ -609,8 +609,11 @@ const PALETTE = [
   { name:"Fuschia",       hex:"#A43663" },
 ];
 const IFLAP = { "Marsala":1, "Rouge":1, "Burnt Orange":1 };
+const NO_SQUARE = { "Marsala":1 };   // stocks not carried in the square envelope
 const ENVELOPE_COLOURS = [{ name:"White", hex:"#FAFAF7", flap:"euro" }]
-  .concat(PALETTE.map(c => ({ name:c.name, hex:c.hex, flap: IFLAP[c.name] ? "iflap" : "euro" })));
+  .concat(PALETTE.map(c => ({ name:c.name, hex:c.hex, flap: IFLAP[c.name] ? "iflap" : "euro",
+                              noSquare: !!NO_SQUARE[c.name] })));
+function envColourAvailable(c){ return !(S.size==="120x120" && c.noSquare); }
 function envColour(){ return ENVELOPE_COLOURS.find(c => c.name===S.envColour) || ENVELOPE_COLOURS[0]; }
 function envFlap(){ return envColour().flap; }
 function flapLabel(){ return envFlap()==="euro" ? "Euro flap" : "iFlap"; }
@@ -621,15 +624,18 @@ const slugName = n => n.toLowerCase().replace(/[^a-z0-9]+/g,"-");
    The back always shares the invitation's stock and design — it is
    the other side of the same physical card. Envelope pieces map to
    the invitation for these controls. ─────────────────────────────── */
-const DESIGN_TARGET = { invite:"invite", back:"invite", envFront:"invite", envBack:"invite",
-                        overview:"invite", details:"details", rsvp:"rsvp", liner:"liner" };
-const CARD_TARGET   = { details:"details", rsvp:"rsvp" };   // everything else -> invite
+const DESIGN_TARGET = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp", liner:"liner" };
+const CARD_TARGET   = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp" };
 const TARGET_LABEL  = { invite:"Invitation", details:"Details card", rsvp:"RSVP card", liner:"Liner" };
-function designTarget(){ return DESIGN_TARGET[S.piece] || "invite"; }
-function cardTarget(){ return CARD_TARGET[S.piece] || "invite"; }
+// In the Full suite view the panel controls follow the SELECTED piece;
+// with nothing selected the per-piece groups hide entirely.
+function effectivePiece(){ return S.piece === "overview" ? S.selected : S.piece; }
+function designTarget(){ const p = effectivePiece(); return p ? (DESIGN_TARGET[p] || null) : null; }
+function cardTarget(){ const p = effectivePiece(); return p ? (CARD_TARGET[p] || null) : null; }
+function sizeVisible(){ const p = effectivePiece(); return p==="invite" || p==="back"; }
 function cardOf(t){ return S.cards[t]; }
 function cardHexOf(t){ const c = cardOf(t); return (PALETTE.find(p=>p.name===c.colour)||PALETTE[16]).hex; }
-function cardSlugOf(t){ const c = cardOf(t); return c.stock==="colour" ? slugName(c.colour) : (c.stock==="cream" ? "cream" : "white"); }
+function cardSlugOf(t){ const c = cardOf(t); return c.stock==="colour" ? slugName(c.colour) : c.stock; }
 function cardLockedOf(t){ return cardOf(t).stock === "colour"; }
 const SIZES = [
   { key:"a5",       label:"A5",     d:"148×210" },
@@ -651,7 +657,8 @@ const S = {
           details:{stock:"matte",colour:"Buttermilk"},
           rsvp:{stock:"matte",colour:"Buttermilk"} },
   size:"a5", qty:50,
-  back:false, details:false, rsvp:false, env:false, liner:false, piece:"invite", envColour:"Almond",
+  back:false, details:false, rsvp:false, env:false, liner:false,
+  piece:"invite", selected:null, envColour:"Almond",
   suite:false, path:null, email:null, cartPayload:null,
 };
 const STEPS = ["00 Ad","01 Edit","02 Specify","03 Suite","04 Fork","05 Email","06 Cart"];
@@ -696,7 +703,7 @@ function go(id, designKey){
               rsvp:{stock:"matte",colour:"Buttermilk"} };
   S.size="a5"; S.qty=50; S.back=false; S.details=false; S.rsvp=false;
   S.env=false; S.liner=false; S.suite=false;
-  S.piece="invite"; S.envColour="Almond";
+  S.piece="invite"; S.selected=null; S.envColour="Almond";
   show("s-edit"); setStep(1);
   buildSpec();
   loadFrame();
@@ -738,7 +745,8 @@ function renderPieces(){
 function setPiece(k){
   if (S.piece===k) return;
   S.piece = k;
-  buildSpec();     // Design + Card controls follow the active piece
+  S.selected = null;   // overview selection resets on any view change
+  buildSpec();         // Design + Card controls follow the active piece
   loadFrame();
 }
 function loadFrame(){
@@ -756,60 +764,79 @@ function loadFrame(){
     $("frame").src = tmplUrl(id) + (bg ? "&bg="+bg.slice(1)+"&lockbg=1" : "");
     $("urltxt").textContent = "/design/" + id;
   }
-  $("specsub").textContent = DESIGNS[S.designs[designTarget()]].sub;
+  $("specsub").textContent = DESIGNS[S.designs[designTarget() || "invite"]].sub;
 }
 /* Photo-mockup geometry measured from the PSD (fractions of each crop). */
-const MOCK = {
-  openenv:  { aspect:0.8174 },
-  envfront: { aspect:1.4107, paper:[0.0329,0.0464,0.9342,0.9071] },
-  envback:  { aspect:1.4173, paper:[0.0329,0.0467,0.9342,0.9067] },
-  a5:       { aspect:0.7268, paper:[0.0506,0.0367,0.8989,0.9265] },
-  a6l:      { aspect:1.3617, paper:[0.0502,0.0684,0.8996,0.8632] },
-  a6p:      { aspect:0.7344, paper:[0.0684,0.0502,0.8632,0.8996] },
-};
+// Piece geometry (paper rects as crop fractions) ships with the assets;
+// loaded at boot so asset rebuilds don't require code edits.
+let MOCK = {};
+fetch("/demo/mockup/geometry.json").then(r => r.json()).then(j => {
+  MOCK = j;
+  if (S.piece === "overview") renderSuiteView();
+});
 // One mock piece: photo base + live design iframe printed on the paper rect.
+// Single click selects the piece (its Design/Card controls appear in the
+// panel); double-click opens it in the editor.
 function mockPiece(p, base, geo, width, opts){
   opts = opts || {};
-  const g = MOCK[geo], r = g.paper;
+  const g = MOCK[geo];
+  if (!g) return "";
+  const r = g.paper;
   // Non-liner overlays stay on a white canvas: multiply blending prints
   // only the ink onto the (already coloured) paper photo beneath.
   const overlay = opts.linerMask
-    ? '<div class="linrwrap"><iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
+    ? '<div class="linrwrap" style="-webkit-mask-image:url(/demo/mockup/'+opts.linerMask+'.png);mask-image:url(/demo/mockup/'+opts.linerMask+'.png)">'
+      + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
     : '<iframe loading="lazy" style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
       + 'src="'+tmplUrl(p.id)+'&preview=1" title="'+p.label+'"></iframe>';
   const aspect = opts.aspect || g.aspect;
-  return '<div class="svp" ondblclick="setPiece(\''+p.key+'\')" title="Double-click to edit">'
+  return '<div class="svp'+(S.selected===p.key?' sel':'')+'" onclick="selectPiece(\''+p.key+'\')" '
+    + 'ondblclick="setPiece(\''+p.key+'\')" title="Click to select · double-click to edit">'
     + '<div class="mock" style="width:'+width+'px;aspect-ratio:'+aspect+'">'
     + '<img src="/demo/mockup/'+base+'.webp" alt="">' + overlay
     + '</div><b>'+p.label+'</b><span>'+p.id
     + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')
     + (opts.cardCol ? ' · '+opts.cardCol : '')+'</span></div>';
 }
+function selectPiece(k){
+  if (S.piece !== "overview") return;
+  S.selected = (S.selected === k) ? null : k;
+  buildSpec(); renderSuiteView();
+}
 function renderSuiteView(){
   // Kate's photographic flat-lay, recoloured to the chosen paper stocks,
   // with the real templates rendered live onto each paper.
-  const slug = slugName(S.envColour);
+  if (!MOCK["card-a5"]) { $("suiteview").innerHTML = '<div class="svhead">Loading your suite…</div>'; return; }
+  const slug = slugName(S.envColour), f = envFlap();
+  // Square invitations use the square envelope photos; A5 and 5×7 use C5.
+  const sq = S.size === "120x120";
+  const envFrontKey = sq ? "envfront-sq" : "envfront-c5";
+  const envBackKey  = (sq ? "envback-sq-" : "envback-c5-") + f;
+  const openKey     = "openenv-" + f;
   // Container aspect that keeps the design at its true print ratio: the
   // paper rect is a fixed fraction of the crop, so scale by its fractions.
   const sizeR = { a5:148/210, "120x180":120/180, "120x120":1 }[S.size];
-  const cardAspect = sizeR * MOCK.a5.paper[3] / MOCK.a5.paper[2];
-  const cardW = S.size==="120x120" ? 260 : 220;
+  const g5 = MOCK["card-a5"];
+  const cardAspect = sizeR * g5.paper[3] / g5.paper[2];
+  const a6pAspect  = (105/148) * g5.paper[3] / g5.paper[2];
+  const cardW = sq ? 260 : 220;
   const colOpt = t => cardLockedOf(t) ? { cardCol: cardOf(t).colour } : {};
   const a6 = t => {
-    const portrait = S.designs[t]==="o2";
-    return { base:(portrait ? "card-a6p-" : "card-a6l-") + cardSlugOf(t),
-             geo: portrait ? "a6p" : "a6l", w: portrait ? 190 : 260 };
+    const portrait = S.designs[t]==="o2";   // Option 2's A6 pieces are portrait
+    return portrait
+      ? { base:"card-a5-"+cardSlugOf(t),  geo:"card-a5",  w:190, opts:{aspect:a6pAspect} }
+      : { base:"card-a6r-"+cardSlugOf(t), geo:"card-a6r", w:260, opts:{} };
   };
   $("suiteview").innerHTML =
-    '<div class="svhead">Your suite · double-click a piece to edit it</div><div class="svgrid">' +
+    '<div class="svhead">Your suite · click a piece to edit its options · double-click to open it</div><div class="svgrid">' +
     pieceList().map(p => {
       switch (p.key) {
-        case "liner":    return mockPiece(p, "openenv-"+slug,  "openenv",  270, {linerMask:true, env:true});
-        case "envFront": return mockPiece(p, "envfront-"+slug, "envfront", 330, {env:true});
-        case "envBack":  return mockPiece(p, "envback-"+slug,  "envback",  330, {env:true});
-        case "details": { const a = a6("details"); return mockPiece(p, a.base, a.geo, a.w, colOpt("details")); }
-        case "rsvp":    { const a = a6("rsvp");    return mockPiece(p, a.base, a.geo, a.w, colOpt("rsvp")); }
-        default:         return mockPiece(p, "card-a5-"+cardSlugOf("invite"), "a5", cardW,
+        case "liner":    return mockPiece(p, openKey+"-"+slug, openKey, 270, {linerMask:"linermask-"+f, env:true});
+        case "envFront": return mockPiece(p, envFrontKey+"-"+slug, envFrontKey, sq ? 300 : 330, {env:true});
+        case "envBack":  return mockPiece(p, envBackKey+"-"+slug,  envBackKey,  sq ? 300 : 330, {env:true});
+        case "details": { const a = a6("details"); return mockPiece(p, a.base, a.geo, a.w, Object.assign(a.opts, colOpt("details"))); }
+        case "rsvp":    { const a = a6("rsvp");    return mockPiece(p, a.base, a.geo, a.w, Object.assign(a.opts, colOpt("rsvp"))); }
+        default:         return mockPiece(p, "card-a5-"+cardSlugOf("invite"), "card-a5", cardW,
                                           Object.assign({aspect: cardAspect}, colOpt("invite")));
       }
     }).join("") + '</div>';
@@ -822,20 +849,29 @@ function pickEnvColour(name){
 }
 function buildSpec(){
   const dt = designTarget(), ct = cardTarget();
-  $("designlabel").textContent = "Design — " + TARGET_LABEL[dt];
-  $("cardlabel").textContent = "Card — " + TARGET_LABEL[ct] + (ct==="invite" && S.back ? " (front + back)" : "");
-  $("opt-design").innerHTML = Object.keys(DESIGNS).map(k =>
-    '<button class="opt'+(S.designs[dt]===k?' on':'')+'" onclick="pickDesign(\''+k+'\')">'+DESIGNS[k].label+'</button>').join("");
+  // Per-piece groups: hidden in the Full suite view until a piece is
+  // selected, and hidden for pieces they don't apply to.
+  $("grp-design").style.display = dt ? "" : "none";
+  $("grp-size").style.display   = sizeVisible() ? "" : "none";
+  $("grp-card").style.display   = ct ? "" : "none";
+  if (dt){
+    $("designlabel").textContent = "Design — " + TARGET_LABEL[dt];
+    $("opt-design").innerHTML = Object.keys(DESIGNS).map(k =>
+      '<button class="opt'+(S.designs[dt]===k?' on':'')+'" onclick="pickDesign(\''+k+'\')">'+DESIGNS[k].label+'</button>').join("");
+  }
   $("opt-size").innerHTML = SIZES.map(s =>
     '<button class="opt'+(S.size===s.key?' on':'')+'" onclick="pickSize(\''+s.key+'\')">'+s.label+'<span class="d">'+s.d+'</span></button>').join("");
-  const cardSel = cardOf(ct);
-  $("opt-card").innerHTML = CARDS.map(c => {
-    const d = PRICING.card[c.key];
-    return '<button class="opt'+(cardSel.stock===c.key?' on':'')+'" onclick="pickCard(\''+c.key+'\')">'+c.label+
-           (d?'<span class="d">+'+money(d)+'</span>':'')+'</button>';
-  }).join("");
+  const cardSel = ct ? cardOf(ct) : null;
+  if (ct){
+    $("cardlabel").textContent = "Card — " + TARGET_LABEL[ct] + (ct==="invite" && S.back ? " (front + back)" : "");
+    $("opt-card").innerHTML = CARDS.map(c => {
+      const d = PRICING.card[c.key];
+      return '<button class="opt'+(cardSel.stock===c.key?' on':'')+'" onclick="pickCard(\''+c.key+'\')">'+c.label+
+             (d?'<span class="d">+'+money(d)+'</span>':'')+'</button>';
+    }).join("");
+  }
   const cardWrap = $("cardcol");
-  if (cardSel.stock==="colour"){
+  if (cardSel && cardSel.stock==="colour"){
     cardWrap.classList.add("on");
     cardWrap.innerHTML =
       '<div class="swrow">' +
@@ -852,10 +888,11 @@ function buildSpec(){
     colWrap.classList.add("on");
     colWrap.innerHTML =
       '<label>Envelope colour</label><div class="swrow">' +
-      ENVELOPE_COLOURS.map(c =>
+      ENVELOPE_COLOURS.filter(envColourAvailable).map(c =>
         '<button class="swb'+(c.name===S.envColour?' on':'')+'" style="background:'+c.hex+'" '
         + 'title="'+c.name+'" onclick="pickEnvColour(\''+c.name+'\')"></button>').join("") +
-      '</div><div class="swname">'+S.envColour+' · '+flapLabel()+'</div>';
+      '</div><div class="swname">'+S.envColour+' · '+flapLabel()
+      + (S.size==="120x120" ? ' <span style="opacity:.65">(Marsala not available in square)</span>' : '')+'</div>';
   } else { colWrap.classList.remove("on"); colWrap.innerHTML=""; }
   $("envdesc").textContent = "Swan Lake front and back, " + ENVELOPES[S.size].label;
   $("linerdesc").textContent = flapLabel() + ", full bleed";
@@ -875,14 +912,17 @@ function buildSpec(){
 }
 function pickSize(k){
   if (S.size===k) return;
-  S.size=k; buildSpec();
+  S.size=k;
+  // Some stocks aren't carried in every envelope size.
+  if (!envColourAvailable(envColour())) S.envColour = "Rouge";
+  buildSpec();
   $("sizewarn").classList.add("on");
   setTimeout(()=>$("sizewarn").classList.remove("on"), 5200);
   loadFrame();
 }
 function pickDesign(k){
   const t = designTarget();
-  if (S.designs[t]===k) return;
+  if (!t || S.designs[t]===k) return;
   S.designs[t]=k; buildSpec(); loadFrame();
 }
 // Does the active piece render the given card target's stock?
@@ -891,7 +931,9 @@ function pieceUsesCard(t){
   return S.piece==="overview" || mapped===t;
 }
 function pickCard(k){
-  const t = cardTarget(), c = cardOf(t);
+  const t = cardTarget();
+  if (!t) return;
+  const c = cardOf(t);
   if (c.stock===k) return;
   const wasLocked = cardLockedOf(t);
   c.stock=k; buildSpec();
@@ -900,6 +942,7 @@ function pickCard(k){
 }
 function pickCardColour(name){
   const t = cardTarget();
+  if (!t) return;
   cardOf(t).colour=name; buildSpec();
   if (pieceUsesCard(t)) loadFrame(); else renderPieces();
 }
@@ -1088,7 +1131,8 @@ function restart(){
               details:{stock:"matte",colour:"Buttermilk"},
               rsvp:{stock:"matte",colour:"Buttermilk"} };
   S.size="a5"; S.qty=50;
-  S.back=S.details=S.rsvp=S.env=S.liner=S.suite=false; S.piece="invite"; S.envColour="Almond";
+  S.back=S.details=S.rsvp=S.env=S.liner=S.suite=false;
+  S.piece="invite"; S.selected=null; S.envColour="Almond";
   S.path=null; S.email=null; S.cartPayload=null;
   document.querySelectorAll(".ov").forEach(o=>o.classList.remove("on"));
   show("s-ad"); setStep(0);
