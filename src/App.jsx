@@ -5029,7 +5029,10 @@ export default function LinenSignEditor() {
           {!isPreview && <TipsPanel/>}
           {/* ── Pages bar (multi-page products: envelopes, menus) ── */}
           {multiPageEnabled && !isPreview && (
-            <div style={{position:"absolute",bottom:14,left:"50%",transform:"translateX(-50%)",zIndex:60,
+            /* fixed, not absolute: inside the scrollable canvas area an
+               absolute bottom anchors to the full content height and slides
+               below the fold whenever the canvas overflows the viewport */
+            <div style={{position:"fixed",bottom:14,left:"calc(50% - 98px)",transform:"translateX(-50%)",zIndex:60,
               display:"flex",alignItems:"center",gap:10,padding:"8px 14px",
               background:"rgba(252,249,245,0.96)",border:"1px solid rgba(180,165,150,0.4)",
               borderRadius:24,boxShadow:"0 4px 24px rgba(0,0,0,0.12)",fontFamily:"Georgia,serif"}}>
