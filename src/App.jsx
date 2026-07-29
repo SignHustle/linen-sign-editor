@@ -272,6 +272,7 @@ function getUrlParams() {
       preview:    p.get("preview")    === "1",
       bg:         p.get("bg")         || null,
       lockbg:     p.get("lockbg")     === "1",
+      ink:        p.get("ink")        || null,
       dev:        p.get("dev")        === "true",
     };
   } catch { return { type: null, size: null, collection: null, variant: null, template: null, group: null }; }
@@ -4074,6 +4075,22 @@ export default function LinenSignEditor() {
   // canvas when the app is embedded small (suite mock-up iframes). Kill it.
   useEffect(() => {
     if (urlParams.preview) document.body.style.margin = "0";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // White-ink mode (dark paper stock): everything prints in white ink, so
+  // text and currentColor artwork render white, and multi-tone raster
+  // artwork — which cannot print on dark card — is hidden. Stylesheet
+  // !important wins over inline styles, so this needs no per-element work.
+  useEffect(() => {
+    if (urlParams.ink !== "white") return;
+    const tag = document.createElement("style");
+    tag.textContent = `
+      [data-canvas-root] * { color: #ffffff !important; }
+      [data-canvas-root] img { visibility: hidden !important; }
+    `;
+    document.head.appendChild(tag);
+    return () => tag.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

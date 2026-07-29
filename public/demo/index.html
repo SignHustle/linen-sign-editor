@@ -147,6 +147,7 @@ h1.big em{font-weight:300}
   filter:drop-shadow(0 14px 22px rgba(45,35,25,.30)) drop-shadow(0 3px 7px rgba(45,35,25,.15))}
 .svp .mock > img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block}
 .svp .mock iframe{position:absolute;margin:0;border:0;pointer-events:none;mix-blend-mode:multiply}
+.svp .mock iframe.inkwhite{mix-blend-mode:normal}
 /* Liner prints through the flap: mask lives on a wrapper div (masking an
    iframe element directly is unreliable in Firefox) */
 .linrwrap{position:absolute;inset:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}
@@ -619,6 +620,23 @@ const PALETTE = [
 ];
 const IFLAP = { "Marsala":1, "Rouge":1, "Burnt Orange":1 };
 const NO_SQUARE = { "Marsala":1 };   // stocks not carried in the square envelope
+/* ── Ink compatibility (pricing master, White Ink sheet) ──────────
+   Dark stocks print in white ink only — an automatic surcharge folded
+   into one number for the customer. Light "no white ink" stocks need
+   no rule here: standard ink prints on them fine. ────────────────── */
+const WHITE_INK_ONLY = { "Black":1, "Emerald":1, "Midnight Blue":1 };
+function whiteInkUnit(qty){
+  // flat $30 per job spread across the run + per-card tier
+  const tier = qty<=20 ? 1.80 : qty<=50 ? 1.20 : qty<=100 ? 1.00 : 0.80;
+  return tier + 30/qty;
+}
+// Which paper (if any dark) a piece prints on: returns the stock name.
+function pieceDarkStock(key){
+  if (key==="envFront" || key==="envBack") return WHITE_INK_ONLY[S.envColour] ? S.envColour : null;
+  const t = CARD_TARGET[key];
+  if (t){ const c = cardOf(t); if (c.stock==="colour" && WHITE_INK_ONLY[c.colour]) return c.colour; }
+  return null;
+}
 const ENVELOPE_COLOURS = [{ name:"White", hex:"#FAFAF7", flap:"euro" }]
   .concat(PALETTE.map(c => ({ name:c.name, hex:c.hex, flap: IFLAP[c.name] ? "iflap" : "euro",
                               noSquare: !!NO_SQUARE[c.name] })));
@@ -785,7 +803,8 @@ function loadFrame(){
     $("frame").style.display = "";
     const id = currentTemplate();
     const bg = pieceBg(S.piece);
-    $("frame").src = tmplUrl(id) + (bg ? "&bg="+bg.slice(1)+"&lockbg=1" : "");
+    const ink = pieceDarkStock(S.piece) ? "&ink=white" : "";
+    $("frame").src = tmplUrl(id) + (bg ? "&bg="+bg.slice(1)+"&lockbg=1" : "") + ink;
     $("urltxt").textContent = "/design/" + id;
   }
   $("specsub").textContent = DESIGNS[S.designs[designTarget() || "invite"]].sub;
@@ -808,12 +827,17 @@ function mockPiece(p, base, geo, width, opts){
   const r = g.paper;
   // Non-liner overlays stay on a white canvas: multiply blending prints
   // only the ink onto the (already coloured) paper photo beneath.
+  // White ink on dark paper can't be shown with multiply (white x anything
+  // vanishes), so those overlays render on the paper colour, normal blend.
+  const dark = pieceDarkStock(p.key);
+  const inkParams = dark ? '&bg='+(opts.env ? envColour().hex : cardHexOf(CARD_TARGET[p.key])).slice(1)+'&ink=white' : '';
+  const inkClass = dark ? ' class="inkwhite"' : '';
   const overlay = opts.noPrint ? ''
     : opts.linerMask
     ? '<div class="linrwrap" style="-webkit-mask-image:url(/demo/mockup/'+opts.linerMask+'.png);mask-image:url(/demo/mockup/'+opts.linerMask+'.png)">'
       + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
-    : '<iframe loading="lazy" style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
-      + 'src="'+tmplUrl(p.id)+'&preview=1" title="'+p.label+'"></iframe>';
+    : '<iframe loading="lazy"'+inkClass+' style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
+      + 'src="'+tmplUrl(p.id)+'&preview=1'+inkParams+'" title="'+p.label+'"></iframe>';
   const aspect = opts.aspect || g.aspect;
   const dbl = opts.noPrint ? 'selectPiece' : 'setPiece';
   return '<div class="svp'+(S.selected===p.key?' sel':'')+'" onclick="selectPiece(\''+p.key+'\')" '
@@ -920,7 +944,8 @@ function buildSpec(){
       PALETTE.map(c =>
         '<button class="swb'+(c.name===cardSel.colour?' on':'')+'" style="background:'+c.hex+'" '
         + 'title="'+c.name+'" onclick="pickCardColour(\''+c.name+'\')"></button>').join("") +
-      '</div><div class="swname">'+cardSel.colour+' 300gsm</div>';
+      '</div><div class="swname">'+cardSel.colour+' 300gsm'
+      + (WHITE_INK_ONLY[cardSel.colour] ? ' · printed in white ink, +'+money(whiteInkUnit(S.qty))+'/card incl. setup' : '')+'</div>';
     $("carddesc").textContent = "Changes the design — background prints the card colour";
   } else { cardWrap.classList.remove("on"); cardWrap.innerHTML=""; $("carddesc").textContent = "Price only"; }
   $("opt-qty").innerHTML = QTYS.map(q =>
@@ -937,6 +962,7 @@ function buildSpec(){
         '<button class="swb'+(c.name===S.envColour?' on':'')+'" style="background:'+c.hex+'" '
         + 'title="'+c.name+'" onclick="pickEnvColour(\''+c.name+'\')"></button>').join("") +
       '</div><div class="swname">'+S.envColour+' · '+flapLabel()
+      + (S.env && WHITE_INK_ONLY[S.envColour] ? ' · printed in white ink, +'+money(whiteInkUnit(S.qty))+'/card incl. setup' : '')
       + (S.size==="120x120" ? ' <span style="opacity:.65">(Marsala not available in square)</span>' : '')+'</div>';
   } else { colWrap.classList.remove("on"); colWrap.innerHTML=""; }
   $("envdesc").textContent = "Swan Lake · " + ENVELOPES[S.size].label;
@@ -1020,6 +1046,14 @@ function unitPrice(){
                                 + (S.sides.rsvp ? PRICING.sides.rsvp : 0);
   if (S.env)   u += PRICING.addons.env + (S.sides.env ? PRICING.sides.env : 0);
   if (S.liner) u += PRICING.addons.liner;
+  // White ink on dark stock: tier rate per printed dark piece, one flat
+  // job fee spread across the run (White Ink sheet in the pricing master).
+  let darkPieces = 0;
+  if (pieceDarkStock("invite")) darkPieces++;
+  if (S.details && !S.suite && pieceDarkStock("details")) darkPieces++;
+  if (S.rsvp && !S.suite && pieceDarkStock("rsvp")) darkPieces++;
+  if (S.env && pieceDarkStock("envFront")) darkPieces++;
+  if (darkPieces) u += darkPieces * (whiteInkUnit(S.qty) - 30/S.qty) + 30/S.qty;
   if (S.suite) u = (u + PRICING.suiteExtraPerSet) * (1 - PRICING.suitePrintDiscount);
   return u * ladder;
 }
