@@ -4108,6 +4108,21 @@ export default function LinenSignEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Silent autosave for deep-linked designs, debounced. Suite preview
+  // iframes read the same key on load, so edits carry into the mock-ups.
+  // (Single-page designs only — multi-page saves just the current page.)
+  useEffect(() => {
+    if (!urlParams.template || stage !== "editor" || !template || urlParams.preview) return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem("lsdesign:" + template.id,
+          JSON.stringify({ elements, background: bgColour, ts: Date.now() }));
+      } catch {}
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, bgColour, template, stage]);
+
   // Canvas fit reads window dimensions at render time; when embedded in an
   // iframe the window can settle to its real size after first paint, so
   // re-render on resize or the canvas keeps the stale (tiny) fit.
@@ -4126,6 +4141,15 @@ export default function LinenSignEditor() {
     const tmpl = TEMPLATES.find(t => t.id === urlParams.template);
     if (tmpl && !tmpl.placeholder) {
       openTemplate(tmpl);
+      // Silent autosave: deep-linked opens (including suite previews, which
+      // share the origin) restore the customer's last edits to this design.
+      try {
+        const saved = JSON.parse(localStorage.getItem("lsdesign:" + tmpl.id) || "null");
+        if (saved && Array.isArray(saved.elements) && saved.elements.length) {
+          resetElements(saved.elements);
+          if (saved.background) setBgColour(saved.background);
+        }
+      } catch {}
       // Locked paper colour (coloured card stock / envelope paper): the
       // canvas background is the paper, not a design choice.
       if (urlParams.bg && urlParams.lockbg) setBgColour("#" + urlParams.bg);
@@ -5100,6 +5124,19 @@ export default function LinenSignEditor() {
               background:(isPreview && urlParams.bg) ? (urlParams.bg==="none" ? "transparent" : "#"+urlParams.bg) : bgColour,
               boxShadow:isPreview?"none":"0 8px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
               borderRadius:isPreview?0:4}}>
+            {/* Envelope backs: dashed flap-fold guide (editing aid only — the
+                templates carry no flap artwork, the fold lives in the photos).
+                Never rendered in preview mode, never printed. */}
+            {template?.category === "envelope-back" && !isPreview && (
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+                style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
+                {/iflap/i.test(template?.name || "")
+                  ? <path d="M 0 33 Q 50 50 100 33" fill="none" stroke="rgba(128,120,110,0.55)"
+                      strokeWidth="1.4" strokeDasharray="4 3" vectorEffect="non-scaling-stroke"/>
+                  : <path d="M 0 4 L 50 56 L 100 4" fill="none" stroke="rgba(128,120,110,0.55)"
+                      strokeWidth="1.4" strokeDasharray="4 3" vectorEffect="non-scaling-stroke"/>}
+              </svg>
+            )}
             <div
               style={{position:"absolute",inset:0,transform:`scale(${fit})`,transformOrigin:"top left",width:cw,height:ch,
                 cursor:marquee?"crosshair":"default"}}
