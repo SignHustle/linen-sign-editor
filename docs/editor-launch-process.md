@@ -427,6 +427,51 @@ Decided against requiring a template purchase before printing.
 customer-facing progress bar: Design → Options → Suite → Download or Print →
 Order, with the watermark/"free until you buy" note visible during Design.
 
+---
+
+## 6c. Ink, artwork and coloured stock
+*(added 29 Jul — how print compatibility stays invisible to the customer)*
+
+**Principle: the paper decides what's offered. Nothing is ever an error.**
+No warnings, no "incompatible combination" messages, and the phrase
+"white ink" never becomes a customer decision.
+
+**Stock classes** (internal data, one entry per colour):
+- `light` — prints everything: standard ink, full raster artwork.
+- `mid` — standard ink fine; artwork allowed, previewed honestly (the
+  multiply preview shows the true colour shift on tinted card).
+- `dark` — white ink only (Black, Emerald, Midnight Blue, …).
+- plus `whiteInk: yes/no` per stock. Dark stocks that cannot take white
+  ink are simply not offered on printed pieces (they can remain as
+  unprinted envelope colours). Swatch availability per piece reuses the
+  Marsala-not-in-square mechanism.
+
+**Dark stock switches the design silently.** Text flips to white; the
+pipeline's asset split does the rest: borders and illustrations are
+single-colour `currentColor` SVGs, so they can legitimately print as
+white ink; multi-tone raster artwork cannot print on dark card, so
+raster-based designs (swan back, cloud liner art) are not offered on
+dark stocks — design availability per stock class, declared the same
+way as sizes and flaps.
+
+**The editor constrains tools, never validates output.** On dark stock
+the text palette collapses to white, the illustration library offers
+only single-colour pieces, photo upload hides. Nothing wrong can be
+built, so nothing needs a warning.
+
+**Pricing is folded flat.** The white-ink surcharge structure is
+pre-computed into a per-stock, per-piece-size table; the customer sees
+one number on the swatch ("Black +$0.80/card"), never stacked
+surcharges. Optional caption: "Deep colours are printed in white ink —
+included in the price shown."
+
+**Needed from Kate:** (1) per-colour classification incl. white-ink
+capability; (2) the white-ink pricing structure, so the flattened
+per-swatch table can be generated.
+
+---
+
+## 7. What to decide next
 
 1. The three prices: single digital, suite digital, print per unit. Pull them from the
    pricing master and check the suite lands near 2.2 to 2.5x.
