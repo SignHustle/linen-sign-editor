@@ -4077,6 +4077,16 @@ export default function LinenSignEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Canvas fit reads window dimensions at render time; when embedded in an
+  // iframe the window can settle to its real size after first paint, so
+  // re-render on resize or the canvas keeps the stale (tiny) fit.
+  const [, setFitTick] = useState(0);
+  useEffect(() => {
+    const onResize = () => setFitTick(t => t + 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   // ── Deep link: ?template=sw12 opens that design straight into the editor ───
   // Design-first entry. Ad and email links point at one design, not a gallery.
   // Falls back to normal browsing if the id is unknown.

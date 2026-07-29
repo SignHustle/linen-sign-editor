@@ -28,7 +28,7 @@ os.makedirs(OUT, exist_ok=True)
 PALETTE = {
  "White":"#FAFAF7","Black":"#2C2A2D","Emerald":"#485B57","Matcha":"#D5CEA0",
  "Kiwi":"#CAB644","Midnight Blue":"#313447","Indigo":"#2D477F","Duck Egg Blue":"#C0CEC8",
- "Light Sky":"#EAEFEC","Almond":"#D6C1A6","Mauve":"#B49BAC","Harvest":"#764627",
+ "Light Sky":"#EAEFEC","Almond":"#EDE2D1","Mauve":"#B49BAC","Harvest":"#764627",
  "Merlot":"#683C3A","Marsala":"#8C2425","Rouge":"#B24419","Burnt Orange":"#BF4C1F",
  "Pumpkin":"#E26E22","Buttermilk":"#E3C38E","Blush":"#F8CFB2","Rosa":"#EBC0AC",
  "Fuschia":"#A43663",
