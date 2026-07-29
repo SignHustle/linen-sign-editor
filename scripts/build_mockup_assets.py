@@ -86,8 +86,10 @@ ENV_PIECES = {
   "envfront-sq":     layer_at("IMG_4265", 8654),
   "envback-sq-euro": layer_at("IMG_4267", 10570),
   "envback-sq-iflap":layer_at("Layer 15", 3444),
-  "openenv-euro":    layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 14443),
-  "openenv-iflap":   layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 10509),
+  # The two open envelopes are per SIZE (widths match the C5 and square
+  # closed envelopes), not per flap shape.
+  "openenv-c5":      layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 14443),
+  "openenv-sq":      layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 10509),
 }
 origins = {}
 for key, layer in ENV_PIECES.items():
@@ -98,14 +100,23 @@ for key, layer in ENV_PIECES.items():
         save_webp(recolour_rgba(rgba, hex_rgb(hx)), f"{OUT}/{key}-{slug(name)}.webp", 900)
 
 # ── Liner masks: multiply liner layers' alpha, in each openenv's frame ──────
-for mkey, lname, lx, okey in [("linermask-euro","Layer 9",14605,"openenv-euro"),
-                              ("linermask-iflap","Layer 13",10623,"openenv-iflap")]:
+# scale > 1 grows the mask about its centroid (Kate: the C5 liner read small).
+for mkey, lname, lx, okey, scale in [("linermask-c5","Layer 9",14605,"openenv-c5",1.06),
+                                     ("linermask-sq","Layer 13",10623,"openenv-sq",1.0)]:
     l = layer_at(lname, lx)
     la = np.asarray(l.composite())[:,:,3]
     (ox, oy), W, H = origins[okey]
     mask = np.zeros((H, W), dtype=np.uint8)
     ax, ay = l.bbox[0]-ox+90, l.bbox[1]-oy+90
     mask[ay:ay+la.shape[0], ax:ax+la.shape[1]] = la
+    if scale != 1.0:
+        ys, xs = np.where(mask > 8)
+        cy, cx = ys.mean(), xs.mean()
+        mi = Image.fromarray(mask)
+        big = mi.resize((round(W*scale), round(H*scale)), Image.LANCZOS)
+        canvas = Image.new("L", (W, H), 0)
+        canvas.paste(big, (round(cx - cx*scale), round(cy - cy*scale)))
+        mask = np.asarray(canvas)
     rgba_mask = np.zeros((H, W, 4), dtype=np.uint8)
     rgba_mask[:,:,:3] = 255
     rgba_mask[:,:,3] = mask
@@ -128,9 +139,15 @@ for stock, layer in CARD_LAYERS.items():
         geometry["card-a6r"] = {"paper": [paper[1],paper[0],paper[3],paper[2]], "aspect": round(1/aspect,4)}
         matte_rgba = rgba
     save_card(rgba, stock)
+# Coloured cards: the colour is MULTIPLIED over the matte-white texture, so
+# the white stock's grain shows through the tint (Kate: underlay matte white).
+def tint_card(rgba, target):
+    out = rgba.copy()
+    out[:,:,:3] = rgba[:,:,:3] * (target[None,None,:] / 255.0)
+    return out
 for name, hx in PALETTE.items():
     if name == "White": continue
-    save_card(recolour_rgba(matte_rgba, hex_rgb(hx)), slug(name))
+    save_card(tint_card(matte_rgba, hex_rgb(hx)), slug(name))
 
 with open(f"{OUT}/geometry.json","w") as f: json.dump(geometry, f, indent=1)
 print(json.dumps(geometry, indent=1))

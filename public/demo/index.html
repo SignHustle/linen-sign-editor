@@ -394,12 +394,17 @@ pre.payload{
       <span class="affects" style="color:var(--plum-soft)" id="carddesc">Price only</span>
     </div>
 
+    <div class="grp" id="grp-sides">
+      <label id="sideslabel">Sides</label>
+      <div class="opts" id="opt-sides"></div>
+      <span class="affects">Changes the design</span>
+    </div>
+
     <div class="grp">
       <label>Add to it</label>
-      <button class="tog" data-add="back"><span><b>Double sided</b><i>A back you can put a map or a poem on</i></span><span class="px" id="px-back"></span><span class="sw"></span></button>
       <button class="tog" data-add="details"><span><b>Details card</b><i>Accommodation, wishing well, the extras</i></span><span class="px" id="px-details"></span><span class="sw"></span></button>
       <button class="tog" data-add="rsvp"><span><b>RSVP card</b><i>For guests to post back</i></span><span class="px" id="px-rsvp"></span><span class="sw"></span></button>
-      <button class="tog" data-add="env"><span><b>Printed envelope</b><i id="envdesc">Swan Lake front and back, C5 landscape</i></span><span class="px" id="px-env"></span><span class="sw"></span></button>
+      <button class="tog" data-add="env"><span><b>Printed envelope</b><i id="envdesc">Swan Lake · C5 landscape</i></span><span class="px" id="px-env"></span><span class="sw"></span></button>
       <button class="tog" data-add="liner"><span><b>Envelope liner</b><i id="linerdesc">Euro flap, full bleed</i></span><span class="px" id="px-liner"></span><span class="sw"></span></button>
       <div class="envcol" id="envcol"></div>
       <span class="affects">Changes the design</span>
@@ -538,9 +543,11 @@ const PRICING = {
   digitalSuite:  59,          // TBD: 2.36× single, inside the 2.2–2.5× band — needs Kate's sign-off
   printBase:     2.60,        // A5 / 5×7in 1-sided retail at qty 50–74 (square 140×140 not in master)
   card: { matte:0, textured:0, cream:0, colour:0.50 },  // coloured stock +$0.50/card per the master
-  addons: { back:0.40, details:2.30, rsvp:2.30, env:0.90, liner:1.20 },
-  // back = 2-sided upcharge; details/rsvp = A6 1-sided retail at qty 50–74;
-  // env/liner TBD, no price in master
+  addons: { details:2.30, rsvp:2.30, env:0.90, liner:1.20 },
+  // details/rsvp = A6 1-sided retail at qty 50–74; env/liner TBD, no price in master
+  // Double-sided upcharges: invite = A5 2-sided minus 1-sided at 50–74;
+  // details/rsvp = A6 ditto ($2.50 − $2.30); envelope TBD (placeholder).
+  sides: { invite:0.40, details:0.20, rsvp:0.20, env:0.30 },
   suiteExtraPerSet: 4.60,     // details A6 $2.30 + RSVP A6 $2.30 at qty 50–74; envelope printing TBD
   suitePrintDiscount: 0.18,   // TBD: suite mechanic is a launch decision, not in master
   qtyLadder: { 25:1.35, 50:1.00, 75:0.85, 100:0.81, 150:0.62 },  // A5 1-sided tiers vs 50–74 base
@@ -572,15 +579,15 @@ const DESIGNS = {
   o1: { label:"Option 1", sub:"Swan Lake · Option 1",
         invite:{ a5:"sw12", "120x180":"sw16", "120x120":"sw20" },
         back:  { a5:"sw13", "120x180":"sw17", "120x120":"sw21" },
-        details:"sw24", rsvp:"sw28" },
+        details:"sw24", detailsBack:"sw25", rsvp:"sw28", rsvpBack:"sw29" },
   o2: { label:"Option 2", sub:"Swan Lake · Option 2",
         invite:{ a5:"sw14", "120x180":"sw18", "120x120":"sw22" },
         back:  { a5:"sw15", "120x180":"sw19", "120x120":"sw23" },
-        details:"sw26", rsvp:"sw30" },
+        details:"sw26", detailsBack:"sw27", rsvp:"sw30", rsvpBack:"sw31" },
   o3: { label:"Option 3", sub:"Swan Lake · Option 3",
         invite:{ a5:"sw36", "120x180":"sw38", "120x120":"sw41" },
         back:  { a5:"sw37", "120x180":"sw39", "120x120":"sw40" },
-        details:"sw24", rsvp:"sw28" },
+        details:"sw24", detailsBack:"sw25", rsvp:"sw28", rsvpBack:"sw29" },
 };
 
 /* ── Paper colours — sampled from the photographed envelope range and
@@ -624,14 +631,20 @@ const slugName = n => n.toLowerCase().replace(/[^a-z0-9]+/g,"-");
    The back always shares the invitation's stock and design — it is
    the other side of the same physical card. Envelope pieces map to
    the invitation for these controls. ─────────────────────────────── */
-const DESIGN_TARGET = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp", liner:"liner" };
-const CARD_TARGET   = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp" };
-const TARGET_LABEL  = { invite:"Invitation", details:"Details card", rsvp:"RSVP card", liner:"Liner" };
+const DESIGN_TARGET = { invite:"invite", back:"invite", details:"details", detailsBack:"details",
+                        rsvp:"rsvp", rsvpBack:"rsvp", liner:"liner" };
+const CARD_TARGET   = { invite:"invite", back:"invite", details:"details", detailsBack:"details",
+                        rsvp:"rsvp", rsvpBack:"rsvp" };
+const SIDES_TARGET  = { invite:"invite", back:"invite", details:"details", detailsBack:"details",
+                        rsvp:"rsvp", rsvpBack:"rsvp", envFront:"env", envBack:"env" };
+const TARGET_LABEL  = { invite:"Invitation", details:"Details card", rsvp:"RSVP card",
+                        liner:"Liner", env:"Envelope" };
 // In the Full suite view the panel controls follow the SELECTED piece;
 // with nothing selected the per-piece groups hide entirely.
 function effectivePiece(){ return S.piece === "overview" ? S.selected : S.piece; }
 function designTarget(){ const p = effectivePiece(); return p ? (DESIGN_TARGET[p] || null) : null; }
 function cardTarget(){ const p = effectivePiece(); return p ? (CARD_TARGET[p] || null) : null; }
+function sidesTarget(){ const p = effectivePiece(); return p ? (SIDES_TARGET[p] || null) : null; }
 function sizeVisible(){ const p = effectivePiece(); return p==="invite" || p==="back"; }
 function cardOf(t){ return S.cards[t]; }
 function cardHexOf(t){ const c = cardOf(t); return (PALETTE.find(p=>p.name===c.colour)||PALETTE[16]).hex; }
@@ -644,7 +657,7 @@ const SIZES = [
 ];
 const CARDS = [
   { key:"matte",    label:"Matte White 350gsm" },
-  { key:"textured", label:"Textured White 300gsm" },
+  { key:"textured", label:"Rough White 300gsm" },
   { key:"cream",    label:"Matte Cream 300gsm" },
   { key:"colour",   label:"Coloured 300gsm" },
 ];
@@ -657,7 +670,8 @@ const S = {
           details:{stock:"matte",colour:"Buttermilk"},
           rsvp:{stock:"matte",colour:"Buttermilk"} },
   size:"a5", qty:50,
-  back:false, details:false, rsvp:false, env:false, liner:false,
+  sides:{ invite:false, details:false, rsvp:false, env:true },
+  details:false, rsvp:false, env:false, liner:false,
   piece:"invite", selected:null, envColour:"Almond",
   suite:false, path:null, email:null, cartPayload:null,
 };
@@ -701,8 +715,9 @@ function go(id, designKey){
   S.cards = { invite:{stock:"matte",colour:"Buttermilk"},
               details:{stock:"matte",colour:"Buttermilk"},
               rsvp:{stock:"matte",colour:"Buttermilk"} };
-  S.size="a5"; S.qty=50; S.back=false; S.details=false; S.rsvp=false;
-  S.env=false; S.liner=false; S.suite=false;
+  S.size="a5"; S.qty=50;
+  S.sides={ invite:false, details:false, rsvp:false, env:true };
+  S.details=false; S.rsvp=false; S.env=false; S.liner=false; S.suite=false;
   S.piece="invite"; S.selected=null; S.envColour="Almond";
   show("s-edit"); setStep(1);
   buildSpec();
@@ -715,11 +730,18 @@ function go(id, designKey){
 function pieceList(){
   const dInv = DESIGNS[S.designs.invite], f = envFlap(), E = ENVELOPES[S.size];
   const list = [ { key:"invite", label:"Invitation", id:dInv.invite[S.size] } ];
-  if (S.back)    list.push({ key:"back",     label:"Back",           id:dInv.back[S.size] });
-  if (S.details) list.push({ key:"details",  label:"Details",        id:DESIGNS[S.designs.details].details });
-  if (S.rsvp)    list.push({ key:"rsvp",     label:"RSVP",           id:DESIGNS[S.designs.rsvp].rsvp });
+  if (S.sides.invite) list.push({ key:"back", label:"Back", id:dInv.back[S.size] });
+  if (S.details){
+    list.push({ key:"details", label:"Details", id:DESIGNS[S.designs.details].details });
+    if (S.sides.details) list.push({ key:"detailsBack", label:"Details back", id:DESIGNS[S.designs.details].detailsBack });
+  }
+  if (S.rsvp){
+    list.push({ key:"rsvp", label:"RSVP", id:DESIGNS[S.designs.rsvp].rsvp });
+    if (S.sides.rsvp) list.push({ key:"rsvpBack", label:"RSVP back", id:DESIGNS[S.designs.rsvp].rsvpBack });
+  }
   if (S.env){    list.push({ key:"envFront", label:"Envelope front", id:E[f].front });
-                 list.push({ key:"envBack",  label:"Envelope back",  id:E[f].back }); }
+                 // envelope back is always a physical piece; printed only when double-sided
+                 list.push({ key:"envBack",  label:"Envelope back",  id:E[f].back, unprinted: !S.sides.env }); }
   if (S.liner)   list.push({ key:"liner",    label:"Liner",          id:linerId() });
   return list;
 }
@@ -727,7 +749,7 @@ function pieceList(){
 // cards only on coloured stock). Locks the editor's background picker.
 function pieceBg(key){
   if (key==="envFront" || key==="envBack") return envColour().hex;
-  const t = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp" }[key];
+  const t = CARD_TARGET[key];
   if (t && cardLockedOf(t)) return cardHexOf(t);
   return null;
 }
@@ -736,7 +758,7 @@ function currentTemplate(){
   return (p || pieceList()[0]).id;
 }
 function renderPieces(){
-  const list = pieceList();
+  const list = pieceList().filter(p => !p.unprinted);   // nothing to edit on an unprinted side
   if (S.piece!=="overview" && !list.some(p => p.key===S.piece)) S.piece = "invite";
   $("piecebar").innerHTML = list.map(p =>
     '<button class="pt'+(S.piece===p.key?' on':'')+'" onclick="setPiece(\''+p.key+'\')">'+p.label+'</button>').join("")
@@ -784,17 +806,20 @@ function mockPiece(p, base, geo, width, opts){
   const r = g.paper;
   // Non-liner overlays stay on a white canvas: multiply blending prints
   // only the ink onto the (already coloured) paper photo beneath.
-  const overlay = opts.linerMask
+  const overlay = opts.noPrint ? ''
+    : opts.linerMask
     ? '<div class="linrwrap" style="-webkit-mask-image:url(/demo/mockup/'+opts.linerMask+'.png);mask-image:url(/demo/mockup/'+opts.linerMask+'.png)">'
       + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
     : '<iframe loading="lazy" style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
       + 'src="'+tmplUrl(p.id)+'&preview=1" title="'+p.label+'"></iframe>';
   const aspect = opts.aspect || g.aspect;
+  const dbl = opts.noPrint ? 'selectPiece' : 'setPiece';
   return '<div class="svp'+(S.selected===p.key?' sel':'')+'" onclick="selectPiece(\''+p.key+'\')" '
-    + 'ondblclick="setPiece(\''+p.key+'\')" title="Click to select · double-click to edit">'
+    + 'ondblclick="'+dbl+'(\''+p.key+'\')" title="'+(opts.noPrint?'Unprinted side':'Click to select · double-click to edit')+'">'
     + '<div class="mock" style="width:'+width+'px;aspect-ratio:'+aspect+'">'
     + '<img src="/demo/mockup/'+base+'.webp" alt="">' + overlay
-    + '</div><b>'+p.label+'</b><span>'+p.id
+    + '</div><b>'+p.label+(opts.noPrint ? ' <span style="font-weight:300">(unprinted)</span>' : '')+'</b><span>'
+    + (opts.noPrint ? '' : p.id)
     + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')
     + (opts.cardCol ? ' · '+opts.cardCol : '')+'</span></div>';
 }
@@ -812,7 +837,8 @@ function renderSuiteView(){
   const sq = S.size === "120x120";
   const envFrontKey = sq ? "envfront-sq" : "envfront-c5";
   const envBackKey  = (sq ? "envback-sq-" : "envback-c5-") + f;
-  const openKey     = "openenv-" + f;
+  const openKey     = sq ? "openenv-sq" : "openenv-c5";   // open envelope follows size
+  const maskKey     = sq ? "linermask-sq" : "linermask-c5";
   // Container aspect that keeps the design at its true print ratio: the
   // paper rect is a fixed fraction of the crop, so scale by its fractions.
   const sizeR = { a5:148/210, "120x180":120/180, "120x120":1 }[S.size];
@@ -831,11 +857,15 @@ function renderSuiteView(){
     '<div class="svhead">Your suite · click a piece to edit its options · double-click to open it</div><div class="svgrid">' +
     pieceList().map(p => {
       switch (p.key) {
-        case "liner":    return mockPiece(p, openKey+"-"+slug, openKey, 270, {linerMask:"linermask-"+f, env:true});
+        case "liner":    return mockPiece(p, openKey+"-"+slug, openKey, 270, {linerMask:maskKey, env:true});
         case "envFront": return mockPiece(p, envFrontKey+"-"+slug, envFrontKey, sq ? 300 : 330, {env:true});
-        case "envBack":  return mockPiece(p, envBackKey+"-"+slug,  envBackKey,  sq ? 300 : 330, {env:true});
-        case "details": { const a = a6("details"); return mockPiece(p, a.base, a.geo, a.w, Object.assign(a.opts, colOpt("details"))); }
-        case "rsvp":    { const a = a6("rsvp");    return mockPiece(p, a.base, a.geo, a.w, Object.assign(a.opts, colOpt("rsvp"))); }
+        case "envBack":  return mockPiece(p, envBackKey+"-"+slug,  envBackKey,  sq ? 300 : 330,
+                                          // unprinted when the envelope is single-sided
+                                          {env:true, noPrint: !S.sides.env});
+        case "details":
+        case "detailsBack": { const a = a6("details"); return mockPiece(p, a.base, a.geo, a.w, Object.assign({}, a.opts, colOpt("details"))); }
+        case "rsvp":
+        case "rsvpBack":    { const a = a6("rsvp");    return mockPiece(p, a.base, a.geo, a.w, Object.assign({}, a.opts, colOpt("rsvp"))); }
         default:         return mockPiece(p, "card-a5-"+cardSlugOf("invite"), "card-a5", cardW,
                                           Object.assign({aspect: cardAspect}, colOpt("invite")));
       }
@@ -848,12 +878,21 @@ function pickEnvColour(name){
   else renderPieces();
 }
 function buildSpec(){
-  const dt = designTarget(), ct = cardTarget();
+  const dt = designTarget(), ct = cardTarget(), st = sidesTarget();
   // Per-piece groups: hidden in the Full suite view until a piece is
   // selected, and hidden for pieces they don't apply to.
   $("grp-design").style.display = dt ? "" : "none";
   $("grp-size").style.display   = sizeVisible() ? "" : "none";
   $("grp-card").style.display   = ct ? "" : "none";
+  $("grp-sides").style.display  = st ? "" : "none";
+  if (st){
+    $("sideslabel").textContent = "Sides — " + TARGET_LABEL[st];
+    const up = PRICING.sides[st];
+    $("opt-sides").innerHTML =
+      '<button class="opt'+(!S.sides[st]?' on':'')+'" onclick="pickSides(false)">Single sided</button>'
+      + '<button class="opt'+(S.sides[st]?' on':'')+'" onclick="pickSides(true)">Double sided'
+      + '<span class="d">+'+money(up)+'</span></button>';
+  }
   if (dt){
     $("designlabel").textContent = "Design — " + TARGET_LABEL[dt];
     $("opt-design").innerHTML = Object.keys(DESIGNS).map(k =>
@@ -863,7 +902,7 @@ function buildSpec(){
     '<button class="opt'+(S.size===s.key?' on':'')+'" onclick="pickSize(\''+s.key+'\')">'+s.label+'<span class="d">'+s.d+'</span></button>').join("");
   const cardSel = ct ? cardOf(ct) : null;
   if (ct){
-    $("cardlabel").textContent = "Card — " + TARGET_LABEL[ct] + (ct==="invite" && S.back ? " (front + back)" : "");
+    $("cardlabel").textContent = "Card — " + TARGET_LABEL[ct] + (S.sides[ct] ? " (front + back)" : "");
     $("opt-card").innerHTML = CARDS.map(c => {
       const d = PRICING.card[c.key];
       return '<button class="opt'+(cardSel.stock===c.key?' on':'')+'" onclick="pickCard(\''+c.key+'\')">'+c.label+
@@ -894,7 +933,7 @@ function buildSpec(){
       '</div><div class="swname">'+S.envColour+' · '+flapLabel()
       + (S.size==="120x120" ? ' <span style="opacity:.65">(Marsala not available in square)</span>' : '')+'</div>';
   } else { colWrap.classList.remove("on"); colWrap.innerHTML=""; }
-  $("envdesc").textContent = "Swan Lake front and back, " + ENVELOPES[S.size].label;
+  $("envdesc").textContent = "Swan Lake · " + ENVELOPES[S.size].label;
   $("linerdesc").textContent = flapLabel() + ", full bleed";
   document.querySelectorAll(".tog").forEach(b=>{
     const k=b.dataset.add;
@@ -903,7 +942,7 @@ function buildSpec(){
     b.onclick = ()=>{
       S[k]=!S[k];
       // Adding a piece jumps the editor to it; removing the one on screen falls back.
-      const jump = { back:"back", details:"details", rsvp:"rsvp", env:"envFront", liner:"liner" };
+      const jump = { details:"details", rsvp:"rsvp", env:"envFront", liner:"liner" };
       if (S[k]) S.piece = jump[k];
       buildSpec(); price(); flashFrame(k);
     };
@@ -927,8 +966,7 @@ function pickDesign(k){
 }
 // Does the active piece render the given card target's stock?
 function pieceUsesCard(t){
-  const mapped = { invite:"invite", back:"invite", details:"details", rsvp:"rsvp" }[S.piece];
-  return S.piece==="overview" || mapped===t;
+  return S.piece==="overview" || CARD_TARGET[S.piece]===t;
 }
 function pickCard(k){
   const t = cardTarget();
@@ -947,6 +985,14 @@ function pickCardColour(name){
   if (pieceUsesCard(t)) loadFrame(); else renderPieces();
 }
 function pickQty(q){ S.qty=q; buildSpec(); }
+function pickSides(double){
+  const t = sidesTarget();
+  if (!t || S.sides[t]===double) return;
+  S.sides[t] = double;
+  // The back piece appears/disappears; if we were on it, fall back handled
+  // by renderPieces inside loadFrame.
+  buildSpec(); price(); loadFrame();
+}
 function flashFrame(kind){
   // Each add-on is its own template in the editor — load the piece she just
   // added (or fall back after removing it) and note it in the mock URL bar.
@@ -960,11 +1006,13 @@ function flashFrame(kind){
 function unitPrice(){
   const ladder = PRICING.qtyLadder[S.qty] || 1;
   let u = PRICING.printBase + PRICING.card[S.cards.invite.stock];
-  if (S.back)  u += PRICING.addons.back;
+  if (S.sides.invite) u += PRICING.sides.invite;
   // Details + RSVP are already inside suiteExtraPerSet — don't double count.
-  if (S.details && !S.suite) u += PRICING.addons.details + PRICING.card[S.cards.details.stock];
-  if (S.rsvp    && !S.suite) u += PRICING.addons.rsvp    + PRICING.card[S.cards.rsvp.stock];
-  if (S.env)   u += PRICING.addons.env;
+  if (S.details && !S.suite) u += PRICING.addons.details + PRICING.card[S.cards.details.stock]
+                                + (S.sides.details ? PRICING.sides.details : 0);
+  if (S.rsvp    && !S.suite) u += PRICING.addons.rsvp    + PRICING.card[S.cards.rsvp.stock]
+                                + (S.sides.rsvp ? PRICING.sides.rsvp : 0);
+  if (S.env)   u += PRICING.addons.env + (S.sides.env ? PRICING.sides.env : 0);
   if (S.liner) u += PRICING.addons.liner;
   if (S.suite) u = (u + PRICING.suiteExtraPerSet) * (1 - PRICING.suitePrintDiscount);
   return u * ladder;
@@ -976,10 +1024,10 @@ function totals(){
 }
 function price(){
   const t = totals();
-  const extras = (S.back?PRICING.addons.back:0)
-               +(S.details?PRICING.addons.details+PRICING.card[S.cards.details.stock]:0)
-               +(S.rsvp?PRICING.addons.rsvp+PRICING.card[S.cards.rsvp.stock]:0)
-               +(S.env?PRICING.addons.env:0)+(S.liner?PRICING.addons.liner:0);
+  const extras = (S.sides.invite?PRICING.sides.invite:0)
+               +(S.details?PRICING.addons.details+PRICING.card[S.cards.details.stock]+(S.sides.details?PRICING.sides.details:0):0)
+               +(S.rsvp?PRICING.addons.rsvp+PRICING.card[S.cards.rsvp.stock]+(S.sides.rsvp?PRICING.sides.rsvp:0):0)
+               +(S.env?PRICING.addons.env+(S.sides.env?PRICING.sides.env:0):0)+(S.liner?PRICING.addons.liner:0);
   $("lbl-base").textContent = (S.suite ? "Full suite ×" : "Invitation ×") + S.qty;
   $("v-base").textContent = money(t.goods - (extras * S.qty * (PRICING.qtyLadder[S.qty]||1)));
   $("r-extras").style.display = extras ? "flex" : "none";
@@ -1081,8 +1129,10 @@ function renderSummary(){
       .map(([k,lbl]) => { const c = S.cards[k];
         return lbl+": "+CARDS.find(x=>x.key===c.stock).label+(c.stock==="colour" ? " — "+c.colour : ""); })
       .join(" · ")],
-    ["Added", [S.back&&"double sided", S.details&&"details card", S.rsvp&&"RSVP card",
-               S.env&&("printed envelope front + back — "+S.envColour+", "+flapLabel()),
+    ["Added", [S.sides.invite&&"double-sided invitation",
+               S.details&&("details card"+(S.sides.details?" (2-sided)":"")),
+               S.rsvp&&("RSVP card"+(S.sides.rsvp?" (2-sided)":"")),
+               S.env&&("printed envelope "+(S.sides.env?"front + back":"front only")+" — "+S.envColour+", "+flapLabel()),
                S.liner&&"liner"].filter(Boolean).join(", ") || "nothing"],
     ["Bought", S.suite ? "Full Swan Lake suite (5 pieces)" : "Invitation only"],
     ["Path", isDl ? "Instant download — " + money(dl) : "Printed, " + S.qty + " sets — " + money(t.total)],
@@ -1102,7 +1152,7 @@ function renderSummary(){
           variant:"demo-"+currentTemplate(),
           summary: d.label + " invitation (" + SIZES.find(s=>s.key===S.size).label + ")",
           spec:{ size:S.size, designs:S.designs, cards:S.cards,
-                 qty:S.qty, doubleSided:S.back, details:S.details, rsvp:S.rsvp,
+                 qty:S.qty, sides:S.sides, details:S.details, rsvp:S.rsvp,
                  envelope:S.env ? { colour:S.envColour, size:ENVELOPES[S.size].label, flap:envFlap() } : false,
                  liner:S.liner, suite:S.suite },
           totals:{ unit:+unitPrice().toFixed(2), total:+t.total.toFixed(2) }
@@ -1131,7 +1181,8 @@ function restart(){
               details:{stock:"matte",colour:"Buttermilk"},
               rsvp:{stock:"matte",colour:"Buttermilk"} };
   S.size="a5"; S.qty=50;
-  S.back=S.details=S.rsvp=S.env=S.liner=S.suite=false;
+  S.sides={ invite:false, details:false, rsvp:false, env:true };
+  S.details=S.rsvp=S.env=S.liner=S.suite=false;
   S.piece="invite"; S.selected=null; S.envColour="Almond";
   S.path=null; S.email=null; S.cartPayload=null;
   document.querySelectorAll(".ov").forEach(o=>o.classList.remove("on"));
