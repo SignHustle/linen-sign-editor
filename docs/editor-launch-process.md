@@ -395,7 +395,38 @@ almost all of the benefit at a fraction of the work, and it lets you launch.
 
 ---
 
-## 7. What to decide next
+## 6b. Saved designs, watermark staging, and the process bar
+*(added 29 Jul after Kate's review of the flow demo)*
+
+**Saved designs are server-side, not browser-side.** The email gate in the demo
+stores nothing; the real build persists every design as JSON in a small
+Worker + KV/D1 store on the existing Cloudflare stack.
+
+- Autosave silently under an anonymous design id from the first edit.
+- The email gate attaches her email to that id; the magic link is just
+  `/design/<id>`. No password, no account form — unchanged.
+- She can return and edit any time. We get an admin view of every saved
+  design; when a print order lands, the same record is the artwork source.
+- The saved design id is what the follow-up email sequence hangs off
+  (abandoned design, eight-weeks-out on-the-day suite).
+
+**Watermark staging — the watermark gates the FILE, not the print path.**
+Decided against requiring a template purchase before printing.
+
+1. Designing is free. The canvas and all previews carry a visible watermark.
+2. Fork, unchanged: **buy the digital download** — watermark comes off, files
+   delivered, price credited against printing for 12 months — or **order
+   printing directly** with no separate template fee. We print from the master
+   files, so the customer never needs the unwatermarked file for print.
+3. Rationale: forcing the template purchase first double-charges print
+   customers (or, if fully credited, adds a checkout for nothing), and no
+   premium competitor charges separately for the design on a print order.
+   The credit mechanic already makes every download a printing deposit.
+
+**The process bar stays in production.** The demo's bottom bar becomes a
+customer-facing progress bar: Design → Options → Suite → Download or Print →
+Order, with the watermark/"free until you buy" note visible during Design.
+
 
 1. The three prices: single digital, suite digital, print per unit. Pull them from the
    pricing master and check the suite lands near 2.2 to 2.5x.
@@ -405,6 +436,9 @@ almost all of the benefit at a fraction of the work, and it lets you launch.
 4. Minimum order quantity per print product.
 5. Whether the sample is A$5 or A$15, and whether it is credited fully or partially.
 6. Who builds the server-side PDF renderer, because that is the long pole.
+7. Saved-design store (Worker + KV/D1): confirm schema and retention. Small
+   build, big unlock — it powers return-to-edit, the admin view, print
+   artwork records and the email sequence (see 6b).
 
 ---
 
