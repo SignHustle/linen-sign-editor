@@ -925,7 +925,10 @@ function buildSpec(){
   $("opt-qty").innerHTML = QTYS.map(q =>
     '<button class="opt'+(S.qty===q?' on':'')+'" onclick="pickQty('+q+')">'+q+'</button>').join("");
   const colWrap = $("envcol");
-  if (S.env){
+  // Envelope colour follows the selected piece, like Design/Card/Sides:
+  // shown only on the envelope faces and the liner (which sits inside it).
+  const envPieceActive = ["envFront","envBack","liner"].includes(effectivePiece());
+  if (S.env && envPieceActive){
     colWrap.classList.add("on");
     colWrap.innerHTML =
       '<label>Envelope colour</label><div class="swrow">' +
