@@ -26,12 +26,12 @@ OUT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 os.makedirs(OUT, exist_ok=True)
 
 PALETTE = {
- "White":"#FAFAF7","Black":"#2C2A2D","Emerald":"#485B57","Matcha":"#D5CEA0",
- "Kiwi":"#CAB644","Midnight Blue":"#313447","Indigo":"#2D477F","Duck Egg Blue":"#C0CEC8",
- "Light Sky":"#EAEFEC","Almond":"#EDE2D1","Mauve":"#B49BAC","Harvest":"#764627",
- "Merlot":"#683C3A","Marsala":"#8C2425","Rouge":"#B24419","Burnt Orange":"#BF4C1F",
- "Pumpkin":"#E26E22","Buttermilk":"#E3C38E","Blush":"#F8CFB2","Rosa":"#EBC0AC",
- "Fuschia":"#A43663",
+ "White":"#FAFAF7","Black":"#2C2A2D","Emerald":"#3C4E4A","Matcha":"#D2CDAB",
+ "Kiwi":"#BEAB3E","Midnight Blue":"#313447","Indigo":"#2D477F","Duck Egg Blue":"#B3C3BD",
+ "Light Sky":"#DDE3E1","Almond":"#EDE2D1","Mauve":"#C2ACBB","Harvest":"#764627",
+ "Merlot":"#683C3A","Marsala":"#6E2422","Rouge":"#8C2425","Burnt Orange":"#BF4C1F",
+ "Pumpkin":"#E26E22","Buttermilk":"#EDD7AF","Blush":"#FADCC6","Rosa":"#F0C2B9",
+ "Fuschia":"#BE3D74",
 }
 hex_rgb = lambda h: np.array([int(h[i:i+2],16) for i in (1,3,5)], dtype=np.float32)
 slug = lambda n: re.sub(r'[^a-z0-9]+','-', n.lower()).strip('-')
