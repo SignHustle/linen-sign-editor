@@ -2730,6 +2730,20 @@ function FontDropdown({ value, onChange, onUpload }) {
 }
 
 // ─── Colour picker ────────────────────────────────────────────────────────────
+// Shown in place of any colour picker when the piece prints in white ink
+// (dark card stock): colour is not a choice there, and saying so beats
+// offering swatches that can't print.
+function WhiteInkNote() {
+  return (
+    <div style={{marginBottom:18,padding:"10px 12px",background:"rgba(138,123,108,0.08)",
+      border:"1px solid rgba(138,123,108,0.25)",borderRadius:8,
+      fontSize:11.5,color:"#6B5E52",lineHeight:1.65,fontFamily:"Georgia,serif"}}>
+      White ink only on dark card stock. If you want coloured text,
+      change the card colour.
+    </div>
+  );
+}
+
 function ColourPicker({ value, onChange, palette, onAddToPalette }) {
   const [draft, setDraft] = useState(value || "#3A3028");
   const prevValue = useRef(value);
@@ -5350,7 +5364,12 @@ export default function LinenSignEditor() {
               </button>
 
               {/* Colour — only shown when the selection contains text elements */}
-              {displayElements.some(e => selectedIds.includes(e.id) && e.type === "text") && (
+              {displayElements.some(e => selectedIds.includes(e.id) && e.type === "text") && urlParams.ink === "white" && (
+                <div style={{marginTop:20,borderTop:"1px solid rgba(180,165,150,0.2)",paddingTop:16}}>
+                  <WhiteInkNote/>
+                </div>
+              )}
+              {displayElements.some(e => selectedIds.includes(e.id) && e.type === "text") && urlParams.ink !== "white" && (
                 <div style={{marginTop:20,borderTop:"1px solid rgba(180,165,150,0.2)",paddingTop:16}}>
                   <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:10}}>TEXT COLOUR</div>
                   <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10}}>
@@ -5463,7 +5482,7 @@ export default function LinenSignEditor() {
                   <div style={{marginBottom:8}}>
                     <SliderRow label="STROKE" value={selectedEl.strokeWidth||0} min={0} max={8} step={0.5}
                       format={v => `${v}px`} onChange={v => updateEl({strokeWidth:v})}/>
-                    {(selectedEl.strokeWidth||0) > 0 && (
+                    {(selectedEl.strokeWidth||0) > 0 && urlParams.ink !== "white" && (
                       <div>
                         <div style={{fontSize:10,letterSpacing:2,color:"#9A8F85",marginBottom:6}}>STROKE COLOUR</div>
                         <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:6}}>
@@ -5529,8 +5548,10 @@ export default function LinenSignEditor() {
                     min={0} max={100} format={v => `${v}%`}
                     onChange={v => updateEl({opacity: v / 100})}/>
 
-                  <ColourPicker value={selectedEl.color} onChange={v => updateEl({color:v})}
-                    palette={palette} onAddToPalette={addToPalette}/>
+                  {urlParams.ink === "white"
+                    ? <WhiteInkNote/>
+                    : <ColourPicker value={selectedEl.color} onChange={v => updateEl({color:v})}
+                        palette={palette} onAddToPalette={addToPalette}/>}
                 </>
               )}
 
@@ -5542,8 +5563,10 @@ export default function LinenSignEditor() {
                   </div>
                   <SliderRow label="SIZE" value={selectedEl.width} min={40} max={360}
                     onChange={v => updateEl({width:v,height:v})}/>
-                  <ColourPicker value={selectedEl.color||"#9A8F85"} onChange={v => updateEl({color:v})}
-                    palette={palette} onAddToPalette={addToPalette}/>
+                  {urlParams.ink === "white"
+                    ? <WhiteInkNote/>
+                    : <ColourPicker value={selectedEl.color||"#9A8F85"} onChange={v => updateEl({color:v})}
+                        palette={palette} onAddToPalette={addToPalette}/>}
                 </>
               )}
 
