@@ -86,10 +86,13 @@ ENV_PIECES = {
   "envfront-sq":     layer_at("IMG_4265", 8654),
   "envback-sq-euro": layer_at("IMG_4267", 10570),
   "envback-sq-iflap":layer_at("Layer 15", 3444),
-  # The two open envelopes are per SIZE (widths match the C5 and square
-  # closed envelopes), not per flap shape.
-  "openenv-c5":      layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 14443),
-  "openenv-sq":      layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 10509),
+  # Open envelopes per size AND flap. The Euro pair are the ChatGPT layers;
+  # Kate added the iFlap pair as named "-exact" layers (the iFlap stock is
+  # 130x190-proportioned for A5/5x7, 150x150 for square).
+  "openenv-c5-euro":  layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 14443),
+  "openenv-sq-euro":  layer_at("ChatGPT Image Jul 28, 2026 at 09_47_45 PM", 10509),
+  "openenv-c5-iflap": layer_at("envelope-open-130x190-exact", 5617),
+  "openenv-sq-iflap": layer_at("envelope-open-150x150-exact", 3444),
 }
 origins = {}
 for key, layer in ENV_PIECES.items():
@@ -99,10 +102,12 @@ for key, layer in ENV_PIECES.items():
     for name, hx in PALETTE.items():
         save_webp(recolour_rgba(rgba, hex_rgb(hx)), f"{OUT}/{key}-{slug(name)}.webp", 900)
 
-# ── Liner masks: multiply liner layers' alpha, in each openenv's frame ──────
+# ── Liner masks: liner layers' alpha, in each openenv's frame ───────────────
 # scale > 1 grows the mask about its centroid (Kate: the C5 liner read small).
-for mkey, lname, lx, okey, scale in [("linermask-c5","Layer 9",14605,"openenv-c5",1.06),
-                                     ("linermask-sq","Layer 13",10623,"openenv-sq",1.0)]:
+for mkey, lname, lx, okey, scale in [("linermask-c5-euro","Layer 9",14609,"openenv-c5-euro",1.06),
+                                     ("linermask-sq-euro","Layer 13",10623,"openenv-sq-euro",1.0),
+                                     ("linermask-c5-iflap","Layer 17",5790,"openenv-c5-iflap",1.0),
+                                     ("linermask-sq-iflap","Layer 16",3641,"openenv-sq-iflap",1.0)]:
     l = layer_at(lname, lx)
     la = np.asarray(l.composite())[:,:,3]
     (ox, oy), W, H = origins[okey]

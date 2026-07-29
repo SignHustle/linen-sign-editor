@@ -839,8 +839,9 @@ function renderSuiteView(){
   const sq = S.size === "120x120";
   const envFrontKey = sq ? "envfront-sq" : "envfront-c5";
   const envBackKey  = (sq ? "envback-sq-" : "envback-c5-") + f;
-  const openKey     = sq ? "openenv-sq" : "openenv-c5";   // open envelope follows size
-  const maskKey     = sq ? "linermask-sq" : "linermask-c5";
+  // Open envelope follows size AND flap — Kate shot both flap shapes.
+  const openKey     = "openenv-"   + (sq ? "sq-" : "c5-") + f;
+  const maskKey     = "linermask-" + (sq ? "sq-" : "c5-") + f;
   // Container aspect that keeps the design at its true print ratio: the
   // paper rect is a fixed fraction of the crop, so scale by its fractions.
   const sizeR = { a5:148/210, "120x180":120/180, "120x120":1 }[S.size];
