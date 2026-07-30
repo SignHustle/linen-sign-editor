@@ -165,6 +165,17 @@ for name, hx in PALETTE.items():
     if name == "White": continue
     save_card(tint_card(matte_rgba, hex_rgb(hx)), slug(name))
 
+# ── Suite background: the PSD's (hidden) watercolour paper texture ──────────
+tex = layer_at("watercolor_paper_texture_01 copy 5", 12384).composite()
+texc = Image.new("RGB", tex.size, (255,255,255))
+texc.paste(tex, (0,0), tex if tex.mode == "RGBA" else None)
+texc = texc.resize((1600, round(tex.size[1]*1600/tex.size[0])), Image.LANCZOS)
+texc.save(f"{OUT}/suitebg.jpg", quality=80)
+
+# Version stamp: asset filenames are stable across rebuilds, so the demo
+# appends ?v=<this> to defeat stale browser caches.
+import time
+geometry["v"] = int(time.time())
 with open(f"{OUT}/geometry.json","w") as f: json.dump(geometry, f, indent=1)
 print(json.dumps(geometry, indent=1))
 print("assets:", len([f for f in os.listdir(OUT) if f.endswith(('.webp','.png'))]))

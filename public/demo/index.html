@@ -804,7 +804,14 @@ function loadFrame(){
     const id = currentTemplate();
     const bg = pieceBg(S.piece);
     const ink = pieceDarkStock(S.piece) ? "&ink=white" : "";
-    $("frame").src = tmplUrl(id) + (bg ? "&bg="+bg.slice(1)+"&lockbg=1" : "") + ink;
+    // Envelope pieces edit on the same photographic envelope as the suite.
+    let photo = "";
+    if (S.piece === "envFront" || S.piece === "envBack") {
+      const a = envAsset(S.piece);
+      if (a.geo) photo = "&bgimg=" + encodeURIComponent(mockUrl(a.key + "-" + slugName(S.envColour) + ".webp"))
+                       + "&bgrect=" + a.geo.paper.join(",");
+    }
+    $("frame").src = tmplUrl(id) + (bg ? "&bg="+bg.slice(1)+"&lockbg=1" : "") + ink + photo;
     $("urltxt").textContent = "/design/" + id;
   }
   $("specsub").textContent = DESIGNS[S.designs[designTarget() || "invite"]].sub;
@@ -813,9 +820,19 @@ function loadFrame(){
 // Piece geometry (paper rects as crop fractions) ships with the assets;
 // loaded at boot so asset rebuilds don't require code edits.
 let MOCK = {};
+const mockUrl = name => "/demo/mockup/" + name + "?v=" + (MOCK.v || 0);
+// Which photographic envelope asset a piece renders on (shared by the
+// suite view and the editor's photo backdrop).
+function envAsset(pieceKey){
+  const sq = S.size === "120x120", f = envFlap();
+  const key = pieceKey === "envFront" ? (sq ? "envfront-sq" : "envfront-c5")
+                                      : (sq ? "envback-sq-" : "envback-c5-") + f;
+  return { key, geo: MOCK[key] };
+}
 fetch("/demo/mockup/geometry.json").then(r => r.json()).then(j => {
   MOCK = j;
   if (S.piece === "overview") renderSuiteView();
+  else loadFrame();          // edit views gain their photo backdrop once geometry lands
 });
 // One mock piece: photo base + live design iframe printed on the paper rect.
 // Single click selects the piece (its Design/Card controls appear in the
@@ -842,7 +859,7 @@ function mockPiece(p, base, geo, width, opts){
     : 'inset:0;width:100%;height:100%';
   const overlay = opts.noPrint ? ''
     : opts.linerMask
-    ? '<div class="linrwrap" style="-webkit-mask-image:url(/demo/mockup/'+opts.linerMask+'.png);mask-image:url(/demo/mockup/'+opts.linerMask+'.png)">'
+    ? '<div class="linrwrap" style="-webkit-mask-image:url('+mockUrl(opts.linerMask+'.png')+');mask-image:url('+mockUrl(opts.linerMask+'.png')+')">'
       + '<iframe loading="lazy" style="'+linerPos+'" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
     : '<iframe loading="lazy"'+inkClass+' style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
       + 'src="'+tmplUrl(p.id)+'&preview=1'+inkParams+'" title="'+p.label+'"></iframe>';
@@ -851,7 +868,7 @@ function mockPiece(p, base, geo, width, opts){
   return '<div class="svp'+(S.selected===p.key?' sel':'')+'" onclick="selectPiece(\''+p.key+'\')" '
     + 'ondblclick="'+dbl+'(\''+p.key+'\')" title="'+(opts.noPrint?'Unprinted side':'Click to select · double-click to edit')+'">'
     + '<div class="mock" style="width:'+width+'px;aspect-ratio:'+aspect+'">'
-    + '<img src="/demo/mockup/'+base+'.webp" alt="">' + overlay
+    + '<img src="'+mockUrl(base+'.webp')+'" alt="">' + overlay
     + '</div><b>'+p.label+(opts.noPrint ? ' <span style="font-weight:300">(unprinted)</span>' : '')+'</b><span>'
     + (opts.noPrint ? '' : p.id)
     + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')
@@ -899,6 +916,7 @@ function renderSuiteView(){
       ? { base:"card-a5-"+cardSlugOf(t),  geo:"card-a5",  w:190, opts:{aspect:a6pAspect} }
       : { base:"card-a6r-"+cardSlugOf(t), geo:"card-a6r", w:260, opts:{} };
   };
+  $("suiteview").style.background = '#fff url("' + mockUrl("suitebg.jpg") + '") center / cover';
   $("suiteview").innerHTML =
     '<div class="svhead">Your suite · click a piece to edit its options · double-click to open it</div><div class="svgrid">' +
     pieceList().map(p => {

@@ -273,6 +273,8 @@ function getUrlParams() {
       bg:         p.get("bg")         || null,
       lockbg:     p.get("lockbg")     === "1",
       ink:        p.get("ink")        || null,
+      bgimg:      p.get("bgimg")      || null,
+      bgrect:     p.get("bgrect")     || null,
       dev:        p.get("dev")        === "true",
     };
   } catch { return { type: null, size: null, collection: null, variant: null, template: null, group: null }; }
@@ -5122,12 +5124,24 @@ export default function LinenSignEditor() {
             data-canvas-root
             style={{width:dispW,height:dispH,margin:"auto",flexShrink:0,position:"relative",overflow:"hidden",
               background:(isPreview && urlParams.bg) ? (urlParams.bg==="none" ? "transparent" : "#"+urlParams.bg) : bgColour,
+              // Photographic editing surface (envelope pieces): show the same
+              // recoloured photo the suite uses, cropped to its paper rect.
+              ...(!isPreview && urlParams.bgimg && urlParams.bgrect ? (() => {
+                const [rx, ry, rw, rh] = urlParams.bgrect.split(",").map(Number);
+                if (!(rw > 0 && rh > 0)) return {};
+                return {
+                  backgroundImage: `url("${urlParams.bgimg}")`,
+                  backgroundSize: `${100/rw}% ${100/rh}%`,
+                  backgroundPosition: `${rw < 1 ? (rx/(1-rw))*100 : 0}% ${rh < 1 ? (ry/(1-rh))*100 : 0}%`,
+                  backgroundRepeat: "no-repeat",
+                };
+              })() : {}),
               boxShadow:isPreview?"none":"0 8px 60px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
               borderRadius:isPreview?0:4}}>
             {/* Envelope backs: dashed flap-fold guide (editing aid only — the
                 templates carry no flap artwork, the fold lives in the photos).
                 Never rendered in preview mode, never printed. */}
-            {template?.category === "envelope-back" && !isPreview && (
+            {template?.category === "envelope-back" && !isPreview && !urlParams.bgimg && (
               <svg viewBox="0 0 100 100" preserveAspectRatio="none"
                 style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
                 {/iflap/i.test(template?.name || "")
