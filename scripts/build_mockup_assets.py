@@ -36,15 +36,20 @@ PALETTE = {
 hex_rgb = lambda h: np.array([int(h[i:i+2],16) for i in (1,3,5)], dtype=np.float32)
 slug = lambda n: re.sub(r'[^a-z0-9]+','-', n.lower()).strip('-')
 
+from scipy.ndimage import gaussian_filter
 def recolour_rgba(rgba, target):
     """RGB replaced everywhere (alpha alone is the silhouette — blending by
-    alpha fringes the edge). Highlights compressed hard so the photo's lit
-    paper edge doesn't become a white rim; shadows keep depth."""
+    alpha fringes the edge). Shading detail is HIGH-PASSED against an
+    alpha-weighted local blur, so each photo's broad lighting gradient is
+    flattened — without this, front and back photos shot under different
+    light read as different colours after tinting. Folds and creases are
+    high-frequency and survive. Highlights still compressed hard so lit
+    paper edges don't become white rims."""
     rgb, alpha = rgba[:,:,:3], rgba[:,:,3]/255.0
     lum = rgb @ np.array([0.299,0.587,0.114], dtype=np.float32)
-    ys, xs = np.where(alpha > 0.95)
-    paper = np.median(lum[ys, xs])
-    d = lum - paper
+    sigma = rgba.shape[1] / 14
+    base = gaussian_filter(lum * alpha, sigma) / np.maximum(gaussian_filter(alpha, sigma), 1e-4)
+    d = lum - base
     pos = np.minimum(np.clip(d, 0, None) * 0.35, 28)
     neg = np.clip(d, -80, 0) * 0.9
     detail = ((pos + neg) * alpha)[..., None]
@@ -127,6 +132,11 @@ for mkey, lname, lx, okey, scale in [("linermask-c5-euro","Layer 9",14609,"opene
     rgba_mask[:,:,:3] = 255
     rgba_mask[:,:,3] = mask
     Image.fromarray(rgba_mask, "RGBA").resize((900, round(H*900/W)), Image.LANCZOS).save(f"{OUT}/{mkey}.png")
+    # The liner design frame is positioned at this box, so the liner die
+    # shape lands on the mask instead of cover-filling the whole card.
+    mys, mxs = np.where(mask > 32)
+    geometry[mkey] = {"bbox": [round(mxs.min()/W,4), round(mys.min()/H,4),
+                               round((mxs.max()-mxs.min())/W,4), round((mys.max()-mys.min())/H,4)]}
 
 # ── Cards: real textures per stock + colours from the matte base ────────────
 CARD_LAYERS = {

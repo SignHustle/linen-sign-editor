@@ -153,7 +153,7 @@ h1.big em{font-weight:300}
 .linrwrap{position:absolute;inset:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}
 .svp.sel .mock{outline:3px solid var(--plum);outline-offset:5px;border-radius:2px}
 .svp.sel b{color:var(--plum)}
-.linrwrap iframe{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;
+.linrwrap iframe{position:absolute;margin:0;border:0;
   pointer-events:none;mix-blend-mode:normal}
 .svp b{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#4A3A30;display:block;margin-top:6px}
 .svp span{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#9A8C7E}
@@ -834,10 +834,16 @@ function mockPiece(p, base, geo, width, opts){
   // the envelope's flap fold and paper shading stay visible beneath it.
   const inkParams = dark ? '&bg=none&ink=white' : '';
   const inkClass = dark ? ' class="inkwhite"' : '';
+  // The liner design frame sits at the MASK's bounding box, so the liner
+  // die shape lands on the flap opening instead of cover-filling the card.
+  const mb = opts.linerMask && MOCK[opts.linerMask] ? MOCK[opts.linerMask].bbox : null;
+  const linerPos = mb
+    ? 'left:'+(mb[0]*100)+'%;top:'+(mb[1]*100)+'%;width:'+(mb[2]*100)+'%;height:'+(mb[3]*100)+'%'
+    : 'inset:0;width:100%;height:100%';
   const overlay = opts.noPrint ? ''
     : opts.linerMask
     ? '<div class="linrwrap" style="-webkit-mask-image:url(/demo/mockup/'+opts.linerMask+'.png);mask-image:url(/demo/mockup/'+opts.linerMask+'.png)">'
-      + '<iframe loading="lazy" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
+      + '<iframe loading="lazy" style="'+linerPos+'" src="'+tmplUrl(p.id)+'&preview=1&bg='+envColour().hex.slice(1)+'" title="'+p.label+'"></iframe></div>'
     : '<iframe loading="lazy"'+inkClass+' style="left:'+(r[0]*100)+'%;top:'+(r[1]*100)+'%;width:'+(r[2]*100)+'%;height:'+(r[3]*100)+'%" '
       + 'src="'+tmplUrl(p.id)+'&preview=1'+inkParams+'" title="'+p.label+'"></iframe>';
   const aspect = opts.aspect || g.aspect;
@@ -851,8 +857,17 @@ function mockPiece(p, base, geo, width, opts){
     + (opts.env ? ' · '+S.envColour+' · '+flapLabel() : '')
     + (opts.cardCol ? ' · '+opts.cardCol : '')+'</span></div>';
 }
+let _pieceClick = { key:null, t:0 };
 function selectPiece(k){
   if (S.piece !== "overview") return;
+  // Manual double-click detection: a single click re-renders the grid, so
+  // the browser's dblclick never fires on the original node.
+  const now = Date.now();
+  if (_pieceClick.key === k && now - _pieceClick.t < 400) {
+    const piece = pieceList().find(p => p.key === k);
+    if (piece && !piece.unprinted) { setPiece(k); return; }
+  }
+  _pieceClick = { key:k, t:now };
   S.selected = (S.selected === k) ? null : k;
   buildSpec(); renderSuiteView();
 }
@@ -874,7 +889,9 @@ function renderSuiteView(){
   const g5 = MOCK["card-a5"];
   const cardAspect = sizeR * g5.paper[3] / g5.paper[2];
   const a6pAspect  = (105/148) * g5.paper[3] / g5.paper[2];
-  const cardW = sq ? 260 : 220;
+  // Square invite is 140mm in a 150mm envelope — size the mock so the
+  // papers keep that physical ratio side by side.
+  const cardW = sq ? 290 : 220;
   const colOpt = t => cardLockedOf(t) ? { cardCol: cardOf(t).colour } : {};
   const a6 = t => {
     const portrait = S.designs[t]==="o2";   // Option 2's A6 pieces are portrait
